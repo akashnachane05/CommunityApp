@@ -203,10 +203,7 @@ export default function StudentCommunity() {
   
   return (
     <div className="p-6 bg-gray-50 min-h-full">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800">Community Forum</h1>
-        <p className="text-gray-600 mt-2">Connect, share, and learn from your peers and alumni.</p>
-      </header>
+      <h1 className="text-3xl font-bold mb-6 text-gray-900">Student & Alumni Community</h1>
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <Card className="mb-6 border-0 shadow-lg bg-white/70 backdrop-blur-sm">

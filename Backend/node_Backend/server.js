@@ -18,7 +18,7 @@ const mentorshipRoutes = require('./routes/mentorshipRoutes');
 const conversationRoutes = require('./routes/conversationRoutes'); 
 const recommendationRoutes = require('./routes/recommendationRoutes'); // Add this
 const statsRoutes = require('./routes/statsRoutes'); // Add this
-
+const jobsRoutes = require("./routes/jobsRoutes");
 const app = express();
 const server = http.createServer(app); // Create an HTTP server from the Express app
 
@@ -46,6 +46,7 @@ app.use('/api/mentorships', mentorshipRoutes);
 app.use('/api/conversations', conversationRoutes); // Add this
 app.use('/api/recommendations', recommendationRoutes); // Add this
 app.use('/api/stats', statsRoutes); // Add thi
+app.use("/api/jobs", jobsRoutes);
 // --- Socket.IO Connection Logic ---
 io.on('connection', (socket) => {
   console.log('✅ A user connected:', socket.id);

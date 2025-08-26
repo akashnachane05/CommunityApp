@@ -17,9 +17,11 @@ import ProfileMenu from "./ProfileMenu";
 import api from "../../api/axios";
 import ChatWindow from "../../components/ChatWindow";
 import { useToast } from "../../components/ui/use-toast";
-
+import { Briefcase } from "lucide-react";
 import StudentCommunity from "./StudentCommunity";
-
+import AlumniSidebar from "./AlumniSidebar";
+import AlumniTopbar from "./AlumniTopbar";
+import {X as CloseIcon }from "lucide-react";
 
 
 
@@ -56,10 +58,10 @@ const DashboardView = () => {
     const profileCompletion = calculateProfileCompletion(stats?.alumniProfile);
 
     const quickStats = [
-        { label: "Profile Completion", value: `${profileCompletion}%`, icon: <User className="h-5 w-5" /> },
-        { label: "Pending Requests", value: stats?.pendingRequests || 0, icon: <Handshake className="h-5 w-5" /> },
-        { label: "Active Mentees", value: stats?.activeMentees || 0, icon: <Users className="h-5 w-5" /> },
-        { label: "Events Hosted", value: stats?.hostedEvents || 0, icon: <Calendar className="h-5 w-5" /> },
+      { label: "Profile Completion", value: `${profileCompletion}%`, icon: <User className="h-5 w-5" />, color: "bg-blue-500" },
+      { label: "Pending Requests", value: stats?.pendingRequests || 0, icon: <Handshake className="h-5 w-5" />, color: "bg-green-500" },
+      { label: "Active Mentees", value: stats?.activeMentees || 0, icon: <Users className="h-5 w-5" />, color: "bg-purple-500" },
+      { label: "Events Hosted", value: stats?.hostedEvents || 0, icon: <Calendar className="h-5 w-5" />, color: "bg-red-500" },
     ];
 
     if (loading) return <p>Loading dashboard...</p>;
@@ -67,13 +69,13 @@ const DashboardView = () => {
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {quickStats.map((stat, i) => (
-                <Card key={i} className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+                <Card key={i} className="border-0 shadow-xl bg-white/70 backdrop-blur-sm transition-transform duration-300 hover:scale-105">
                     <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-4"><div className="p-3 rounded-xl bg-blue-500 text-white">{stat.icon}</div></div>
+                        <div className="flex items-center justify-between mb-4"><div className={`p-3 rounded-xl text-white ${stat.color}`}>{stat.icon}</div></div>
                         <div>
                             <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
                             <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                            {stat.label === "Profile Completion" && <Progress value={profileCompletion} className="h-2 mt-2" />}
+                            {stat.label === "Profile Completion" && <Progress value={profileCompletion} className="h-2 mt-2 bg-gray-200 [&>div]:bg-blue-500" />}
                         </div>
                     </CardContent>
                 </Card>
@@ -356,6 +358,134 @@ const MyHostedEvents = ({ keyProp }) => {
     );
 };
 
+
+const JobPostForm = ({ onJobPosted }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    company: "",
+    location: "",
+    type: "Full-Time",
+    applyLink: "",
+  });
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const jobData = { ...form, postedBy: user._id, postedByName: user.fullName };
+      await api.post("/jobs/post", jobData);
+      toast({ title: "Job Posted!", description: "Your job is now visible to students." });
+      setForm({ title: "", description: "", company: "", location: "", type: "Full-Time", applyLink: "" });
+      if (onJobPosted) onJobPosted();
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: error.response?.data?.message || "Failed to post job." });
+    }
+  };
+
+  return (
+    <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle>Post a New Job</CardTitle>
+        <CardDescription>Share job opportunities with students.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="title">Job Title</Label>
+              <Input id="title" name="title" value={form.title} onChange={handleChange} required />
+            </div>
+            <div>
+              <Label htmlFor="company">Company</Label>
+              <Input id="company" name="company" value={form.company} onChange={handleChange} required />
+            </div>
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input id="location" name="location" value={form.location} onChange={handleChange} required />
+            </div>
+            <div>
+              <Label htmlFor="type">Job Type</Label>
+              <Select onValueChange={(val) => setForm({ ...form, type: val })} defaultValue="Full-Time">
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Full-Time">Full-Time</SelectItem>
+                  <SelectItem value="Part-Time">Part-Time</SelectItem>
+                  <SelectItem value="Internship">Internship</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" name="description" value={form.description} onChange={handleChange} required />
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="applyLink">Application Link</Label>
+              <Input id="applyLink" name="applyLink" value={form.applyLink} onChange={handleChange} placeholder="https://careers.company.com/job123" />
+            </div>
+          </div>
+          <Button type="submit" className="w-full mt-6">Post Job</Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+
+const MyJobPosts = ({ keyProp }) => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/jobs/my-posts");
+        setJobs(res.data);
+      } catch (error) {
+        console.error("Failed to fetch jobs", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
+  }, [keyProp]);
+
+  if (loading) return <p>Loading jobs...</p>;
+
+  return (
+    <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+      <CardHeader><CardTitle>My Job Posts</CardTitle></CardHeader>
+      <CardContent>
+        {jobs.length === 0 ? <p className="text-gray-500">You have not posted any jobs yet.</p> : (
+          <ul className="space-y-3">
+            {jobs.map(job => (
+              <li key={job._id} className="p-3 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold">{job.title} @ {job.company}</p>
+                    <p className="text-sm text-gray-500">{job.location} · {job.type}</p>
+                  </div>
+                  {job.applyLink && (
+                    <a href={job.applyLink} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm">Apply</Button>
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+
+
 // --- Main Alumni Dashboard Component ---
 
 export default function AlumniDashboard() {
@@ -364,47 +494,96 @@ export default function AlumniDashboard() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [chatReceiver, setChatReceiver] = useState(null);
   const [hostedEventsKey, setHostedEventsKey] = useState(0);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // State for the sidebar
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <nav className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-50 px-4 py-2">
-        <div className="container mx-auto flex justify-between items-center">
-            <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-2"><div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center"><span className="text-white font-bold text-lg">V</span></div><span className="text-xl font-bold text-gray-900">VITAA</span></div>
-                <div className="hidden md:flex space-x-2">
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")} className={`${activeTab === "dashboard" ? "font-semibold text-blue-700" : "text-gray-700"}`}><Home className="h-5 w-5 mr-2" /> Dashboard</Button>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("mentorship")} className={`${activeTab === "mentorship" ? "font-semibold text-blue-700" : "text-gray-700"}`}><Users className="h-5 w-5 mr-2" /> Mentorship</Button>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("events")} className={`${activeTab === "events" ? "font-semibold text-blue-700" : "text-gray-700"}`}><Calendar className="h-5 w-5 mr-2" /> Events</Button>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("community")} className={`${activeTab === "community" ? "font-semibold text-blue-700" : "text-gray-700"}`}><MessageCircle className="h-5 w-5 mr-2" /> Community</Button>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("resources")} className={`${activeTab === "resources" ? "font-semibold text-blue-700" : "text-gray-700"}`}><BookOpen className="h-5 w-5 mr-2" /> Resources</Button>
-                </div>
-            </div>
-            <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="sm" className="relative" onClick={() => { alert(`You have ${notifications.length} new messages.`); clearNotifications(); }}>
-                    <Bell className="h-4 w-4" />
-                    {notifications.length > 0 && (<span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>)}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowChatbot(!showChatbot)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Bot className="h-4 w-4" /></Button>
-                <ProfileMenu user={user} setActiveTab={setActiveTab} logout={logout} />
-            </div>
-        </div>
-      </nav>
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Sidebar */}
+      <AlumniSidebar
+        isCollapsed={isSidebarCollapsed}
+        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        activeTab={activeTab}
+        onSetActiveTab={setActiveTab}
+        onLogout={logout}
+      />
 
-      {showChatbot && (
-        <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50">
-            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl"><div className="flex items-center gap-2"><Bot className="h-5 w-5 text-white" /><span className="text-white font-medium">AI Assistant</span></div><Button variant="ghost" size="sm" onClick={() => setShowChatbot(false)} className="text-white hover:bg-white/20 h-6 w-6 p-0"><X className="h-4 w-4" /></Button></div>
-            <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
-            <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
-        </div>
-      )}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Topbar */}
+        <AlumniTopbar
+          notifications={notifications}
+          clearNotifications={clearNotifications}
+          onToggleChatbot={() => setShowChatbot(!showChatbot)}
+           setActiveTab={setActiveTab} // Pass the setActiveTab prop here
+        />
 
-      <div className="container mx-auto px-4 py-8">
-        {activeTab === "dashboard" && <DashboardView />}
-        {activeTab === "mentorship" && (<Tabs defaultValue="requests" className="w-full"><TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6"><TabsTrigger value="requests">Pending Requests</TabsTrigger><TabsTrigger value="mentees">My Mentees</TabsTrigger></TabsList><TabsContent value="requests"><MentorshipRequests /></TabsContent><TabsContent value="mentees"><MyMentees onStartChat={setChatReceiver} /></TabsContent></Tabs>)}
-        {activeTab === "events" && (<Tabs defaultValue="host"><TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6"><TabsTrigger value="host"><PlusCircle className="h-4 w-4 mr-2" /> Host an Event</TabsTrigger><TabsTrigger value="my-events"><Calendar className="h-4 w-4 mr-2" /> My Hosted Events</TabsTrigger></TabsList><TabsContent value="host"><HostEventForm onEventProposed={() => setHostedEventsKey(k => k + 1)} /></TabsContent><TabsContent value="my-events"><MyHostedEvents keyProp={hostedEventsKey} /></TabsContent></Tabs>)}
-        {activeTab === "community" && <StudentCommunity />}
-        {activeTab === "profile" && <AlumniProfile />}
+        {/* Dynamic Content */}
+        <div className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
+          {activeTab === "dashboard" && <DashboardView />}
+          {activeTab === "mentorship" && (
+            <Tabs defaultValue="requests" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6">
+                <TabsTrigger value="requests">Pending Requests</TabsTrigger>
+                <TabsTrigger value="mentees">My Mentees</TabsTrigger>
+              </TabsList>
+              <TabsContent value="requests">
+                <MentorshipRequests />
+              </TabsContent>
+              <TabsContent value="mentees">
+                <MyMentees onStartChat={setChatReceiver} />
+              </TabsContent>
+            </Tabs>
+          )}
+          {activeTab === "events" && (
+            <Tabs defaultValue="host">
+              <TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6">
+                <TabsTrigger value="host">
+                  <PlusCircle className="h-4 w-4 mr-2" /> Host an Event
+                </TabsTrigger>
+                <TabsTrigger value="my-events">
+                  <Calendar className="h-4 w-4 mr-2" /> My Hosted Events
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="host">
+                <HostEventForm onEventProposed={() => setHostedEventsKey((k) => k + 1)} />
+              </TabsContent>
+              <TabsContent value="my-events">
+                <MyHostedEvents keyProp={hostedEventsKey} />
+              </TabsContent>
+            </Tabs>
+          )}
+          {activeTab === "community" && <StudentCommunity />}
+          {activeTab === "profile" && <AlumniProfile />}
+          {activeTab === "jobs" && (
+            <Tabs defaultValue="post">
+              <TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6">
+                <TabsTrigger value="post">
+                  <PlusCircle className="h-4 w-4 mr-2" /> Post a Job
+                </TabsTrigger>
+                <TabsTrigger value="my-jobs">
+                  <Briefcase className="h-4 w-4 mr-2" /> My Job Posts
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="post">
+                <JobPostForm onJobPosted={() => setHostedEventsKey((k) => k + 1)} />
+              </TabsContent>
+              <TabsContent value="my-jobs">
+                <MyJobPosts keyProp={hostedEventsKey} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </div>
       </div>
+      {showChatbot && (
+                <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transition-all duration-300">
+                    <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl">
+                        <div className="flex items-center space-x-2"><Bot className="h-5 w-5 text-white" /><span className="text-white font-medium">AI Assistant</span></div>
+                        <Button variant="ghost" size="sm" onClick={() => setShowChatbot(false)} className="text-white hover:bg-white/20 h-6 w-6 p-0"><CloseIcon className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
+                    <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
+                </div>
+        )}
       {chatReceiver && <ChatWindow receiver={chatReceiver} onClose={() => setChatReceiver(null)} />}
     </div>
   );

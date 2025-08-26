@@ -1,12 +1,17 @@
+// in routes/mentorshipRoutes.js
 const express = require('express');
 const router = express.Router();
-const mentorshipController = require('../controllers/mentorshipController');
+const { requestMentorship, viewMyRequests, viewReceivedRequests, respondToRequest,getMyMentees } = require('../controllers/mentorshipController');
+
 const auth = require('../middleware/auth');
 
-// Protected routes for alumni and students (Alumni and Admins)
-router.post('/', auth(['Alumni', 'Admin']), mentorshipController.createMentorship);
-router.get('/', auth(['Alumni', 'Student', 'Admin']), mentorshipController.getAllMentorships);
-router.put('/:id', auth(['Alumni', 'Admin']), mentorshipController.updateMentorship);
-router.delete('/:id', auth(['Admin']), mentorshipController.deleteMentorship);
+// Student routes
+router.post('/request', auth(['Student']), requestMentorship);
+router.get('/my-requests', auth(['Student']), viewMyRequests);
+
+// Alumni routes
+router.get('/my-mentees', auth(['Alumni']), getMyMentees); // ✅ ADD THIS
+router.get('/received-requests', auth(['Alumni']), viewReceivedRequests);
+router.put('/respond/:requestId', auth(['Alumni']), respondToRequest);
 
 module.exports = router;

@@ -5,9 +5,8 @@ const studentSchema = new mongoose.Schema({
   educationHistory: [{
     degree: String,
     institution: String,
-    yearOfEnrollment: Number,
-   
-  }], 
+    yearOfGraduation: Number
+  }],
   Bio: { type: String, maxlength: 500 },
   interests: [String] ,
   skills:[String],

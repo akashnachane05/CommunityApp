@@ -1,15 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const studentController = require('../controllers/studentController');
-const auth = require('../middleware/auth');
-// Add these before Admin-only routes
-router.get('/me', auth(['Student', 'Admin']), studentController.getMyStudentProfile);
-router.put('/me', auth(['Student', 'Admin']), studentController.updateMyStudentProfile);
+const {
+  getMyStudentProfile,
+  updateMyStudentProfile,
+  createStudent,
+  getAllStudents,
+  updateStudent,
+  deleteStudent
+} = require('../controllers/studentController');
 
-// Protected routes for students (Students and Admins)
-router.post('/', auth(['Student', 'Admin']), studentController.createStudent);
-router.get('/', auth(['Student', 'Admin']), studentController.getAllStudents);
-router.put('/:id', auth(['Student', 'Admin']), studentController.updateStudent);
-router.delete('/:id', auth(['Admin']), studentController.deleteStudent);
+const auth = require('../middleware/auth');
+
+// ====================
+// Student self-service routes
+// ====================
+router.get('/me', auth(['Student', 'Admin']), getMyStudentProfile);
+router.put('/me', auth(['Student', 'Admin']), updateMyStudentProfile);
+router.post('/', auth(['Student', 'Admin']), createStudent);
+
+// ====================
+// Admin-only routes
+// ====================
+router.get('/', auth(['Admin']), getAllStudents);
+router.put('/:id', auth(['Admin']), updateStudent);
+router.delete('/:id', auth(['Admin']), deleteStudent);
 
 module.exports = router;

@@ -1,40 +1,108 @@
+// const User = require('../models/User');
+// const jwt = require('jsonwebtoken');
+// const bcrypt = require('bcryptjs');
+
+// // Helper: create JWT
+// const generateToken = (user) => {
+//   return jwt.sign(
+//     {
+//       id: user._id,
+//       role: user.role,
+//       fullName: user.fullName,
+//       email: user.email,
+//     },
+//     process.env.JWT_SECRET,
+//     { expiresIn: '1d' }
+//   );
+// };
+
+// // ====================
+// // Register User
+// // ====================
+// exports.createUser = async (req, res) => {
+//   try {
+//     const { fullName, email, password, role, secretCode } = req.body;
+
+//     // Prevent unauthorized Admin creation
+//     if (role === 'Admin' && secretCode !== process.env.ADMIN_SECRET_CODE) {
+//       return res.status(403).json({ message: 'Invalid Admin Secret Code' });
+//     }
+
+//     const existing = await User.findOne({ email });
+//     if (existing) {
+//       return res.status(400).json({ message: 'User already exists' });
+//     }
+
+//     const user = new User({ fullName, email, password, role });
+//     await user.save();
+
+//     const token = generateToken(user);
+//     res.status(201).json({ token, user });
+//   } catch (err) {
+//     console.error('Error creating user:', err);
+//     res.status(500).json({ message: 'Server error', error: err.message });
+//   }
+// };
 const User = require('../models/User');
+const Student = require('../models/Students');
+const Alumni = require('../models/Alumni');
+const Admin = require('../models/Admins');  // your Admin model
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
-// Helper: create JWT
 const generateToken = (user) => {
   return jwt.sign(
-    {
-      id: user._id,
-      role: user.role,
-      fullName: user.fullName,
-      email: user.email,
-    },
+    { id: user._id, role: user.role, fullName: user.fullName, email: user.email },
     process.env.JWT_SECRET,
     { expiresIn: '1d' }
   );
 };
 
-// ====================
-// Register User
-// ====================
 exports.createUser = async (req, res) => {
   try {
     const { fullName, email, password, role, secretCode } = req.body;
 
-    // Prevent unauthorized Admin creation
     if (role === 'Admin' && secretCode !== process.env.ADMIN_SECRET_CODE) {
       return res.status(403).json({ message: 'Invalid Admin Secret Code' });
     }
 
     const existing = await User.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
+    if (existing) return res.status(400).json({ message: 'User already exists' });
 
+    // Create base user
     const user = new User({ fullName, email, password, role });
     await user.save();
+
+    // Auto-create role profile
+    if (role === 'Student') {
+      const studentProfile = new Student({
+        userId: user._id,
+        educationHistory: [],
+        Bio: '',
+        interests: [],
+        skills: [],
+        industryInterestOrField: [],
+        careerGoal: ''
+      });
+      await studentProfile.save();
+    } else if (role === 'Alumni') {
+      const alumniProfile = new Alumni({
+        userId: user._id,
+        graduationYear: null,
+        currentJob: '',
+        company: '',
+        Bio: '',
+        skills: [],
+        mentorshipAvailable: false
+      });
+      await alumniProfile.save();
+    } else if (role === 'Admin') {
+      const adminProfile = new Admin({
+        userId: user._id,
+        permissions: ['manage_users', 'manage_content'] // example default perms
+      });
+      await adminProfile.save();
+    }
 
     const token = generateToken(user);
     res.status(201).json({ token, user });
@@ -44,6 +112,7 @@ exports.createUser = async (req, res) => {
   }
 };
 
+
 // ====================
 // Login User
 // ====================
@@ -52,7 +121,7 @@ exports.loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Invalid email or password' });
+    if (!user) return res.status(400).json({ message: 'User Not Found' });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
@@ -83,14 +152,19 @@ exports.getProfile = async (req, res) => {
 // ====================
 // Get All Users (Admin only)
 // ====================
+
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    // ✅ Only fetch Students + Alumni
+    const users = await User.find({ role: { $in: ["Student", "Alumni"] } })
+      .select("-password"); // don't expose hashed passwords
+
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 // ====================
 // Update User (Admin only)
@@ -120,10 +194,25 @@ exports.updateUser = async (req, res) => {
 exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findByIdAndDelete(id);
 
+    const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json({ message: 'User deleted successfully' });
+
+    // ✅ Only allow deleting Students or Alumni
+    if (user.role !== 'Student' && user.role !== 'Alumni') {
+      return res.status(403).json({ message: "Admins can only delete Students or Alumni" });
+    }
+
+    await User.findByIdAndDelete(id);
+
+    // Clean up related profile
+    if (user.role === 'Student') {
+      await Student.findOneAndDelete({ userId: user._id });
+    } else if (user.role === 'Alumni') {
+      await Alumni.findOneAndDelete({ userId: user._id });
+    }
+
+    res.json({ message: 'User and profile deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

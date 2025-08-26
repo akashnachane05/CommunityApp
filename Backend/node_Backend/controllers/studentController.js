@@ -10,23 +10,20 @@ exports.createStudent = async (req, res) => {
       return res.status(400).json({ message: 'Student profile already exists' });
     }
 
-    const student = new Student({ ...req.body, userId: req.user.id });
+    const student = new Student({
+      userId: req.user.id,
+      Bio: req.body.Bio || '',
+      skills: req.body.skills || [],
+      interests: req.body.interests || [],
+      educationHistory: req.body.educationHistory || [],
+      industryInterestOrField: req.body.industryInterestOrField || [],
+      careerGoal: req.body.careerGoal || ''
+    });
+
     await student.save();
     res.status(201).json(student);
   } catch (err) {
     console.error('Error creating student profile:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
-
-// ====================
-// Get ALL Students (Admin + Students allowed in routes)
-// ====================
-exports.getAllStudents = async (req, res) => {
-  try {
-    const students = await Student.find().populate('userId', 'fullName email role');
-    res.json(students);
-  } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
@@ -41,6 +38,7 @@ exports.getMyStudentProfile = async (req, res) => {
 
     res.json(student);
   } catch (err) {
+    console.error('Error fetching student profile:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
@@ -50,9 +48,18 @@ exports.getMyStudentProfile = async (req, res) => {
 // ====================
 exports.updateMyStudentProfile = async (req, res) => {
   try {
+    const updateData = {
+      Bio: req.body.Bio || '',
+      skills: req.body.skills || [],
+      interests: req.body.interests || [],
+      educationHistory: req.body.educationHistory || [],
+      industryInterestOrField: req.body.industryInterestOrField || [],
+      careerGoal: req.body.careerGoal || ''
+    };
+
     const student = await Student.findOneAndUpdate(
       { userId: req.user.id },
-      req.body,
+      updateData,
       { new: true }
     ).populate('userId', 'fullName email role');
 
@@ -60,32 +67,37 @@ exports.updateMyStudentProfile = async (req, res) => {
 
     res.json(student);
   } catch (err) {
+    console.error('Error updating student profile:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
 // ====================
-// Update ANY Student by ID (Admin only)
+// Admin-only routes
 // ====================
+exports.getAllStudents = async (req, res) => {
+  try {
+    const students = await Student.find().populate('userId', 'fullName email role');
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 exports.updateStudent = async (req, res) => {
   try {
     const student = await Student.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!student) return res.status(404).json({ message: 'Student not found' });
-
     res.json(student);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-// ====================
-// Delete Student (Admin only)
-// ====================
 exports.deleteStudent = async (req, res) => {
   try {
     const student = await Student.findByIdAndDelete(req.params.id);
     if (!student) return res.status(404).json({ message: 'Student not found' });
-
     res.json({ message: 'Student deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

@@ -1,97 +1,411 @@
 import { useEffect, useState } from "react";
-import api from "../../api/axios";
-import Navbar from "../../components/navbar";
+import { User, Users, Calendar, BookOpen, MessageCircle, Bot, X, ArrowRight, Home, Bell, MessageSquare, PlusCircle, Link as LinkIcon, MapPin, Handshake } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
+import { Label } from "../../components/ui/label";
+import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { Badge } from "../../components/ui/badge";
+import { Progress } from "../../components/ui/progress";
+import AlumniProfile from "./AlumniProfile";
+import ProfileMenu from "./ProfileMenu";
+import api from "../../api/axios";
+import ChatWindow from "../../components/ChatWindow";
+import { useToast } from "../../components/ui/use-toast";
 
-function useSelfProfile() {
-  const { user } = useAuth();
-  const [doc, setDoc] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+import StudentCommunity from "./StudentCommunity";
 
-  const refresh = async () => {
+
+
+
+const DashboardView = () => {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                setLoading(true);
+                const res = await api.get("/stats/alumni-dashboard");
+                setStats(res.data);
+            } catch (error) {
+                console.error("Failed to load dashboard stats", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
+
+    const calculateProfileCompletion = (profile) => {
+        if (!profile) return 0;
+        let score = 20; // Base score for existing
+        const totalFields = 4;
+        if (profile.skills?.length > 0) score += 20;
+        if (profile.bio) score += 20;
+        if (profile.currentJob) score += 20;
+        if (profile.mentorshipAvailability === true) score += 20;
+        return score > 100 ? 100 : score;
+    };
+
+    const profileCompletion = calculateProfileCompletion(stats?.alumniProfile);
+
+    const quickStats = [
+        { label: "Profile Completion", value: `${profileCompletion}%`, icon: <User className="h-5 w-5" /> },
+        { label: "Pending Requests", value: stats?.pendingRequests || 0, icon: <Handshake className="h-5 w-5" /> },
+        { label: "Active Mentees", value: stats?.activeMentees || 0, icon: <Users className="h-5 w-5" /> },
+        { label: "Events Hosted", value: stats?.hostedEvents || 0, icon: <Calendar className="h-5 w-5" /> },
+    ];
+
+    if (loading) return <p>Loading dashboard...</p>;
+
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {quickStats.map((stat, i) => (
+                <Card key={i} className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between mb-4"><div className="p-3 rounded-xl bg-blue-500 text-white">{stat.icon}</div></div>
+                        <div>
+                            <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
+                            <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
+                            {stat.label === "Profile Completion" && <Progress value={profileCompletion} className="h-2 mt-2" />}
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+};
+
+// --- Mentorship Requests Component ---
+const MentorshipRequests = () => {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchRequests = async () => {
     try {
-      setLoading(true); setError("");
-      const res = await api.get("/alumni");
-      const mine = (res.data || []).find((d) =>
-        (d.userId === user._id) || (d.userId?._id === user._id) || (d.userId === user.id)
-      );
-      setDoc(mine || null);
-    } catch (e) {
-      setError(e?.response?.data?.message || "Failed to load alumni");
-    } finally { setLoading(false); }
+      setLoading(true);
+      const res = await api.get("/mentorships/received-requests");
+      setRequests(res.data);
+    } catch (error) {
+      console.error("Failed to fetch requests", error);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  useEffect(() => { if (user) refresh(); }, [user]);
-  return { doc, loading, error, refresh };
-}
-
-export default function AlumniDashboard() {
-  const { doc, loading, error, refresh } = useSelfProfile();
-  const [form, setForm] = useState({ Bio: "", skills: "", mentorshipAvailability: true, currentJob: "" });
 
   useEffect(() => {
-    if (doc) setForm({
-      Bio: doc.Bio || "",
-      skills: (doc.skills || []).join(", "),
-      mentorshipAvailability: !!doc.mentorshipAvailability,
-      currentJob: doc.currentJob || "",
-    });
-  }, [doc]);
+    fetchRequests();
+  }, []);
 
-  const createIfMissing = async () => {
-    await api.post("/alumni", {});
-    await refresh();
+  const handleResponse = async (requestId, status) => {
+    try {
+      await api.put(`/mentorships/respond/${requestId}`, { status });
+      setRequests(requests.filter((req) => req._id !== requestId));
+      alert(`Request has been ${status}.`);
+    } catch (error) {
+      alert("Failed to respond to request.");
+    }
   };
 
-  const save = async () => {
-    if (!doc?._id) return;
-    await api.put(`/alumni/${doc._id}`, {
-      Bio: form.Bio,
-      currentJob: form.currentJob,
-      mentorshipAvailability: !!form.mentorshipAvailability,
-      skills: form.skills.split(",").map(s => s.trim()).filter(Boolean),
-    });
-    await refresh();
-  };
+  if (loading) return <p>Loading requests...</p>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl p-6 shadow mt-8">
-        <h2 className="text-xl font-semibold mb-4">Alumni Dashboard</h2>
-        {loading && <p>Loading...</p>}
-        {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
-        {!doc && (
-          <div className="mb-4 p-3 bg-yellow-50 border rounded">
-            <p className="mb-2">No alumni profile found. Create one?</p>
-            <button onClick={createIfMissing} className="px-3 py-1.5 rounded bg-indigo-600 text-white">Create Profile</button>
-          </div>
+    <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle>Pending Mentorship Requests</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {requests.length === 0 ? (
+          <p className="text-gray-500">You have no new mentorship requests.</p>
+        ) : (
+          <ul className="space-y-4">
+            {requests.map((req) => (
+              <li key={req._id} className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start space-x-4">
+                  <Avatar>
+                    <AvatarFallback>{req.student.fullName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-semibold">{req.student.fullName}</p>
+                    <p className="text-sm text-gray-500 mb-2">Requested on: {new Date(req.requestedAt).toLocaleDateString()}</p>
+                    <p className="text-sm bg-white p-3 rounded-md border">"{req.studentGoals}"</p>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3 mt-4">
+                  <Button variant="outline" onClick={() => handleResponse(req._id, "Rejected")}>Reject</Button>
+                  <Button onClick={() => handleResponse(req._id, "Accepted")}>Accept</Button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-        {doc && (
-          <div className="space-y-3">
-            <div className="grid md:grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm">Bio</label>
-                <textarea className="w-full border rounded-lg p-2" rows={4} value={form.Bio} onChange={(e)=>setForm(f=>({...f, Bio:e.target.value}))} />
-              </div>
-              <div>
-                <label className="text-sm">Current Job</label>
-                <input className="w-full border rounded-lg p-2" value={form.currentJob} onChange={(e)=>setForm(f=>({...f, currentJob:e.target.value}))} />
-              </div>
-              <div>
-                <label className="text-sm">Skills (comma separated)</label>
-                <input className="w-full border rounded-lg p-2" value={form.skills} onChange={(e)=>setForm(f=>({...f, skills:e.target.value}))} />
-              </div>
-              <div className="flex items-center gap-2">
-                <input id="ment" type="checkbox" className="h-4 w-4" checked={form.mentorshipAvailability} onChange={(e)=>setForm(f=>({...f, mentorshipAvailability:e.target.checked}))} />
-                <label htmlFor="ment">Open for Mentorship</label>
-              </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// --- My Mentees Component ---
+const MyMentees = ({ onStartChat }) => {
+  const [mentees, setMentees] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMentees = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/mentorships/my-mentees");
+        setMentees(res.data);
+      } catch (error) {
+        console.error("Failed to fetch mentees", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMentees();
+  }, []);
+
+  if (loading) return <p>Loading mentees...</p>;
+
+  return (
+    <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle>My Mentees</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {mentees.length === 0 ? (
+          <p className="text-gray-500">You have not accepted any mentees yet.</p>
+        ) : (
+          <ul className="space-y-4">
+            {mentees.map((mentorship) => (
+              <li key={mentorship._id} className="p-4 bg-gray-50 rounded-lg flex justify-between items-center">
+                <div className="flex items-center space-x-4">
+                  <Avatar>
+                    <AvatarFallback>{mentorship.student.fullName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-semibold">{mentorship.student.fullName}</p>
+                    <p className="text-sm text-gray-500">Accepted on: {new Date(mentorship.acceptedAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <Button onClick={() => onStartChat(mentorship.student)}>
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Chat Now
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// --- Host Event Form Component ---
+const HostEventForm = ({ onEventProposed }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [form, setForm] = useState({ title: "", description: "", date: "", duration: "", type: "Webinar", mode: "Online", location: "", meetingLink: "" });
+
+    const handleFormChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+    const handleSelectChange = (value) => setForm({ ...form, type: value });
+    const handleModeChange = (value) => setForm({ ...form, mode: value });
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const eventData = { ...form, speaker: user.fullName, speakerRole: "Alumnus" };
+            await api.post("/events/propose", eventData);
+            toast({ title: "Proposal Submitted!", description: "Your event is now pending admin approval." });
+            setForm({ title: "", description: "", date: "", duration: "", type: "Webinar", mode: "Online", location: "", meetingLink: "" });
+            if (onEventProposed) onEventProposed();
+        } catch (error) {
+            toast({ variant: "destructive", title: "Error", description: error.response?.data?.message || "Failed to submit proposal." });
+        }
+    };
+    
+    return (
+        <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+            <CardHeader>
+                <CardTitle>Propose a New Event</CardTitle>
+                <CardDescription>Share your knowledge. Submit the details below for admin review.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2">
+                            <Label htmlFor="title">Event Title</Label>
+                            <Input id="title" name="title" value={form.title} onChange={handleFormChange} required />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="description">Event Description</Label>
+                            <Textarea id="description" name="description" value={form.description} onChange={handleFormChange} required />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label>Event Mode</Label>
+                            <RadioGroup defaultValue="Online" onValueChange={handleModeChange} className="flex items-center space-x-4 pt-2">
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="Online" id="online" /><Label htmlFor="online">Online</Label></div>
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="Offline" id="offline" /><Label htmlFor="offline">Offline</Label></div>
+                            </RadioGroup>
+                        </div>
+                        <div className="md:col-span-2">
+                            {form.mode === 'Online' ? (
+                                <div>
+                                    <Label htmlFor="meetingLink">Meeting Link (Google Meet, Zoom, etc.)</Label>
+                                    <Input id="meetingLink" name="meetingLink" value={form.meetingLink} onChange={handleFormChange} placeholder="https://meet.google.com/..." required />
+                                </div>
+                            ) : (
+                                <div>
+                                    <Label htmlFor="location">Location (Venue Address)</Label>
+                                    <Input id="location" name="location" value={form.location} onChange={handleFormChange} placeholder="e.g., VIT Pune Auditorium" required />
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <Label htmlFor="date">Proposed Date & Time</Label>
+                            <Input id="date" name="date" type="datetime-local" value={form.date} onChange={handleFormChange} required />
+                        </div>
+                        <div>
+                            <Label htmlFor="duration">Duration</Label>
+                            <Input id="duration" name="duration" value={form.duration} onChange={handleFormChange} placeholder="e.g., 90 minutes" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label>Type</Label>
+                            <Select onValueChange={handleSelectChange} defaultValue="Webinar">
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Webinar">Webinar</SelectItem>
+                                    <SelectItem value="Workshop">Workshop</SelectItem>
+                                    <SelectItem value="Meetup">Meetup</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <Button type="submit" className="w-full mt-6">Submit for Approval</Button>
+                </form>
+            </CardContent>
+        </Card>
+    );
+};
+
+// --- My Hosted Events Component (Upgraded) ---
+const MyHostedEvents = ({ keyProp }) => {
+    const [myEvents, setMyEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMyEvents = async () => {
+            try {
+                setLoading(true);
+                const res = await api.get("/events/my-hosted");
+                setMyEvents(res.data);
+            } catch (error) {
+                console.error("Failed to fetch hosted events", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMyEvents();
+    }, [keyProp]);
+
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'Approved': return <Badge className="bg-green-100 text-green-700">Approved</Badge>;
+            case 'Rejected': return <Badge className="bg-red-100 text-red-700">Rejected</Badge>;
+            default: return <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">Pending</Badge>;
+        }
+    };
+
+    if (loading) return <p>Loading your events...</p>;
+    
+    return (
+        <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+            <CardHeader><CardTitle>My Hosted Events</CardTitle></CardHeader>
+            <CardContent>
+                {myEvents.length === 0 ? <p className="text-gray-500">You have not proposed any events yet.</p> : (
+                    <ul className="space-y-3">
+                        {myEvents.map(event => (
+                            <li key={event._id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                                <div>
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <p className="font-semibold">{event.title}</p>
+                                      {getStatusBadge(event.status)}
+                                    </div>
+                                    <p className="text-sm text-gray-500">{new Date(event.date).toLocaleDateString()}</p>
+                                </div>
+                                {/* ✅ NEW: "Join Now" button for approved online events */}
+                                {event.status === 'Approved' && event.mode === 'Online' && (
+                                    <a href={event.meetingLink} target="_blank" rel="noopener noreferrer">
+                                        <Button size="sm">
+                                            <LinkIcon className="h-4 w-4 mr-2"/>
+                                            Join Now
+                                        </Button>
+                                    </a>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+// --- Main Alumni Dashboard Component ---
+
+export default function AlumniDashboard() {
+  const { user, logout, notifications, clearNotifications } = useAuth();
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [showChatbot, setShowChatbot] = useState(false);
+  const [chatReceiver, setChatReceiver] = useState(null);
+  const [hostedEventsKey, setHostedEventsKey] = useState(0);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <nav className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-50 px-4 py-2">
+        <div className="container mx-auto flex justify-between items-center">
+            <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-2"><div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center"><span className="text-white font-bold text-lg">V</span></div><span className="text-xl font-bold text-gray-900">VITAA</span></div>
+                <div className="hidden md:flex space-x-2">
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("dashboard")} className={`${activeTab === "dashboard" ? "font-semibold text-blue-700" : "text-gray-700"}`}><Home className="h-5 w-5 mr-2" /> Dashboard</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("mentorship")} className={`${activeTab === "mentorship" ? "font-semibold text-blue-700" : "text-gray-700"}`}><Users className="h-5 w-5 mr-2" /> Mentorship</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("events")} className={`${activeTab === "events" ? "font-semibold text-blue-700" : "text-gray-700"}`}><Calendar className="h-5 w-5 mr-2" /> Events</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("community")} className={`${activeTab === "community" ? "font-semibold text-blue-700" : "text-gray-700"}`}><MessageCircle className="h-5 w-5 mr-2" /> Community</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("resources")} className={`${activeTab === "resources" ? "font-semibold text-blue-700" : "text-gray-700"}`}><BookOpen className="h-5 w-5 mr-2" /> Resources</Button>
+                </div>
             </div>
-            <button onClick={save} className="px-4 py-2 rounded bg-emerald-600 text-white">Save</button>
-          </div>
-        )}
+            <div className="flex items-center space-x-4">
+                <Button variant="ghost" size="sm" className="relative" onClick={() => { alert(`You have ${notifications.length} new messages.`); clearNotifications(); }}>
+                    <Bell className="h-4 w-4" />
+                    {notifications.length > 0 && (<span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>)}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowChatbot(!showChatbot)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Bot className="h-4 w-4" /></Button>
+                <ProfileMenu user={user} setActiveTab={setActiveTab} logout={logout} />
+            </div>
+        </div>
+      </nav>
+
+      {showChatbot && (
+        <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50">
+            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl"><div className="flex items-center gap-2"><Bot className="h-5 w-5 text-white" /><span className="text-white font-medium">AI Assistant</span></div><Button variant="ghost" size="sm" onClick={() => setShowChatbot(false)} className="text-white hover:bg-white/20 h-6 w-6 p-0"><X className="h-4 w-4" /></Button></div>
+            <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
+            <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
+        </div>
+      )}
+
+      <div className="container mx-auto px-4 py-8">
+        {activeTab === "dashboard" && <DashboardView />}
+        {activeTab === "mentorship" && (<Tabs defaultValue="requests" className="w-full"><TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6"><TabsTrigger value="requests">Pending Requests</TabsTrigger><TabsTrigger value="mentees">My Mentees</TabsTrigger></TabsList><TabsContent value="requests"><MentorshipRequests /></TabsContent><TabsContent value="mentees"><MyMentees onStartChat={setChatReceiver} /></TabsContent></Tabs>)}
+        {activeTab === "events" && (<Tabs defaultValue="host"><TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6"><TabsTrigger value="host"><PlusCircle className="h-4 w-4 mr-2" /> Host an Event</TabsTrigger><TabsTrigger value="my-events"><Calendar className="h-4 w-4 mr-2" /> My Hosted Events</TabsTrigger></TabsList><TabsContent value="host"><HostEventForm onEventProposed={() => setHostedEventsKey(k => k + 1)} /></TabsContent><TabsContent value="my-events"><MyHostedEvents keyProp={hostedEventsKey} /></TabsContent></Tabs>)}
+        {activeTab === "community" && <StudentCommunity />}
+        {activeTab === "profile" && <AlumniProfile />}
       </div>
+      {chatReceiver && <ChatWindow receiver={chatReceiver} onClose={() => setChatReceiver(null)} />}
     </div>
   );
 }

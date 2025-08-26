@@ -46,7 +46,7 @@ export default function LandingPage() {
       role: "Software Engineer, Google",
       year: "Class of 2019",
       content:
-        "VIITAA helped me connect with amazing mentors who guided my career transition into tech. The AI matching was spot-on!",
+        "VITAA helped me connect with amazing mentors who guided my career transition into tech. The AI matching was spot-on!",
       rating: 5,
     },
     {
@@ -57,7 +57,7 @@ export default function LandingPage() {
         "Being a mentor on this platform has been incredibly rewarding. The blockchain verification gives credibility to our profiles.",
       rating: 5,
     },
-  ]
+    ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -68,7 +68,7 @@ export default function LandingPage() {
                 <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                     <span className="text-white font-bold text-lg">V</span>
                 </div>
-                <span className="text-xl font-bold text-gray-900">VIITAA</span>
+                <span className="text-xl font-bold text-gray-900">VITAA</span>
             </div>
             <nav className="hidden md:flex items-center space-x-8">
   <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">
@@ -97,7 +97,7 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-            The ultimate platform for VIIT alumni and students to connect, share knowledge, and collaborate on
+            The ultimate platform for VIT alumni and students to connect, share knowledge, and collaborate on
             mentorship, career development, and learning opportunities.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -210,7 +210,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Community Says</h2>
-            <p className="text-xl text-gray-600">Real stories from alumni and students who've benefited from VIITAA</p>
+            <p className="text-xl text-gray-600">Real stories from alumni and students who've benefited from VITAA</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -242,32 +242,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold mb-4">Ready to Join the VIIT Alumni Network?</h2>
-          <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-            Connect with thousands of alumni and students, access exclusive resources, and accelerate your career
-            growth.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/auth/signup">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-3">
-                Join as Student
-              </Button>
-            </Link>
-            <Link to="/auth/signup?type=alumni">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-blue-600 text-lg px-8 py-3 bg-transparent"
-              >
-                Join as Alumni
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+     
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
@@ -278,10 +253,10 @@ export default function LandingPage() {
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold">V</span>
                 </div>
-                <span className="text-lg font-bold">VIITAA</span>
+                <span className="text-lg font-bold">VITAA</span>
               </div>
               <p className="text-gray-400">
-                Connecting VIIT alumni and students for a brighter future through technology and collaboration.
+                Connecting VIT alumni and students for a brighter future through technology and collaboration.
               </p>
             </div>
             <div>
@@ -361,7 +336,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 VIIT Alumni Association. All rights reserved.</p>
+            <p>&copy; 2024 VIT Alumni Association. All rights reserved.</p>
           </div>
         </div>
       </footer>

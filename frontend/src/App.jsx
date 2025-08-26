@@ -11,7 +11,7 @@ import Dashboard from "./pages/dashboard";
 import AdminDashboard from "./pages/admin/adminDashboard";
 import StudentDashboard from "./pages/Student/studentDashboard";
 import AlumniDashboard from "./pages/alumni/alumniDashboard";
-
+import { Toaster } from "./components/ui/toaster";
 export default function App() {
   return (
     <AuthProvider>
@@ -32,6 +32,7 @@ export default function App() {
         {/* Default */}
         {/* <Route path="*" element={<Navigate to="/login" />} /> */}
       </Routes>
+      <Toaster /> {/* 2. Add Toaster here */}
     </AuthProvider>
   );
 }

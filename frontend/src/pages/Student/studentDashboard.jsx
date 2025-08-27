@@ -18,7 +18,7 @@ import StudentResources from "./StudentResources";
 import StudentMentorship from "./StudentMentorship";
 import ProfileMenu from "./ProfileMenu";
 import StudentJobs from "./StudentJobs";
-
+import CommunityForum from "../../components/CommunityForum";
 // --- DashboardView Component (No changes to logic, just cleaned up) ---
 const DashboardView = ({ setActiveTab }) => {
     const { user } = useAuth();
@@ -210,7 +210,7 @@ export default function StudentDashboard() {
             case "mentorship": return <StudentMentorship />;
             case "events": return <StudentEvents />;
             case "resources": return <StudentResources />;
-            case "community": return <StudentCommunity />;
+            case "community": return <CommunityForum />;
             case "profile": return <StudentProfile />;
             case "jobs": return <StudentJobs />;
             default: return <DashboardView setActiveTab={setActiveTab} />;

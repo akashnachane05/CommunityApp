@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getNetworkStats, getStudentDashboardStats, getAlumniDashboardStats } = require('../controllers/statsController');
+const { getNetworkStats, getStudentDashboardStats, getAlumniDashboardStats,getAdminDashboardStats } = require('../controllers/statsController');
 const auth = require('../middleware/auth');
 
 // For the Alumni Network page
@@ -11,5 +11,8 @@ router.get('/student-dashboard', auth(['Student']), getStudentDashboardStats);
 
 // ✅ NEW: For the Alumni Dashboard page
 router.get('/alumni-dashboard', auth(['Alumni']), getAlumniDashboardStats);
+
+// --- ✅ NEW: For the Admin Dashboard page ---
+router.get('/admin-dashboard', auth(['Admin']), getAdminDashboardStats);
 
 module.exports = router;

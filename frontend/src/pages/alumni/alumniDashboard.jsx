@@ -18,11 +18,12 @@ import api from "../../api/axios";
 import ChatWindow from "../../components/ChatWindow";
 import { useToast } from "../../components/ui/use-toast";
 import { Briefcase } from "lucide-react";
-import StudentCommunity from "./StudentCommunity";
+// import StudentCommunity from "./StudentCommunity";
 import AlumniSidebar from "./AlumniSidebar";
 import AlumniTopbar from "./AlumniTopbar";
 import {X as CloseIcon }from "lucide-react";
-
+import { Trash2 } from "lucide-react";
+import CommunityForum from "../../components/CommunityForum";
 
 
 const DashboardView = () => {
@@ -360,24 +361,17 @@ const MyHostedEvents = ({ keyProp }) => {
 
 
 const JobPostForm = ({ onJobPosted }) => {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    company: "",
-    location: "",
-    type: "Full-Time",
-    applyLink: "",
-  });
+  const [form, setForm] = useState({ title: "", description: "", company: "", location: "", type: "Full-Time", applyLink: "" });
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const jobData = { ...form, postedBy: user._id, postedByName: user.fullName };
-      await api.post("/jobs/post", jobData);
+      // The backend automatically knows who the user is from the token,
+      // so we don't need to send the user ID.
+      await api.post("/jobs/create", form);
       toast({ title: "Job Posted!", description: "Your job is now visible to students." });
       setForm({ title: "", description: "", company: "", location: "", type: "Full-Time", applyLink: "" });
       if (onJobPosted) onJobPosted();
@@ -390,42 +384,17 @@ const JobPostForm = ({ onJobPosted }) => {
     <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
       <CardHeader>
         <CardTitle>Post a New Job</CardTitle>
-        <CardDescription>Share job opportunities with students.</CardDescription>
+        <CardDescription>Share job or internship opportunities with students.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="title">Job Title</Label>
-              <Input id="title" name="title" value={form.title} onChange={handleChange} required />
-            </div>
-            <div>
-              <Label htmlFor="company">Company</Label>
-              <Input id="company" name="company" value={form.company} onChange={handleChange} required />
-            </div>
-            <div>
-              <Label htmlFor="location">Location</Label>
-              <Input id="location" name="location" value={form.location} onChange={handleChange} required />
-            </div>
-            <div>
-              <Label htmlFor="type">Job Type</Label>
-              <Select onValueChange={(val) => setForm({ ...form, type: val })} defaultValue="Full-Time">
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Full-Time">Full-Time</SelectItem>
-                  <SelectItem value="Part-Time">Part-Time</SelectItem>
-                  <SelectItem value="Internship">Internship</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" value={form.description} onChange={handleChange} required />
-            </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="applyLink">Application Link</Label>
-              <Input id="applyLink" name="applyLink" value={form.applyLink} onChange={handleChange} placeholder="https://careers.company.com/job123" />
-            </div>
+            <div><Label htmlFor="title">Job Title</Label><Input id="title" name="title" value={form.title} onChange={handleChange} required /></div>
+            <div><Label htmlFor="company">Company</Label><Input id="company" name="company" value={form.company} onChange={handleChange} required /></div>
+            <div><Label htmlFor="location">Location</Label><Input id="location" name="location" value={form.location} onChange={handleChange} required /></div>
+            <div><Label htmlFor="type">Job Type</Label><Select onValueChange={(val) => setForm({ ...form, type: val })} defaultValue="Full-Time"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Full-Time">Full-Time</SelectItem><SelectItem value="Part-Time">Part-Time</SelectItem><SelectItem value="Internship">Internship</SelectItem></SelectContent></Select></div>
+            <div className="md:col-span-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" value={form.description} onChange={handleChange} required /></div>
+            <div className="md:col-span-2"><Label htmlFor="applyLink">Application Link</Label><Input id="applyLink" name="applyLink" value={form.applyLink} onChange={handleChange} placeholder="https://careers.company.com/job123" required /></div>
           </div>
           <Button type="submit" className="w-full mt-6">Post Job</Button>
         </form>
@@ -434,16 +403,16 @@ const JobPostForm = ({ onJobPosted }) => {
   );
 };
 
-
-const MyJobPosts = ({ keyProp }) => {
+const MyJobPosts = ({ keyProp, onJobDeleted }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchJobs = async () => {
       try {
         setLoading(true);
-        const res = await api.get("/jobs/my-posts");
+        const res = await api.get("/jobs/my-jobs");
         setJobs(res.data);
       } catch (error) {
         console.error("Failed to fetch jobs", error);
@@ -453,6 +422,17 @@ const MyJobPosts = ({ keyProp }) => {
     };
     fetchJobs();
   }, [keyProp]);
+
+  const handleDelete = async (jobId) => {
+      if (!window.confirm("Are you sure you want to delete this job posting?")) return;
+      try {
+          await api.delete(`/jobs/${jobId}`);
+          toast({ title: "Job Deleted", description: "The job posting has been removed." });
+          if (onJobDeleted) onJobDeleted();
+      } catch (error) {
+          toast({ variant: "destructive", title: "Error", description: "Could not delete the job." });
+      }
+  };
 
   if (loading) return <p>Loading jobs...</p>;
 
@@ -469,11 +449,10 @@ const MyJobPosts = ({ keyProp }) => {
                     <p className="font-semibold">{job.title} @ {job.company}</p>
                     <p className="text-sm text-gray-500">{job.location} · {job.type}</p>
                   </div>
-                  {job.applyLink && (
-                    <a href={job.applyLink} target="_blank" rel="noopener noreferrer">
-                      <Button size="sm">Apply</Button>
-                    </a>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    <a href={job.applyLink} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline">View</Button></a>
+                    <Button size="sm" variant="destructive" onClick={() => handleDelete(job._id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -486,94 +465,48 @@ const MyJobPosts = ({ keyProp }) => {
 
 
 
+
 // --- Main Alumni Dashboard Component ---
 
 export default function AlumniDashboard() {
-  const { user, logout, notifications, clearNotifications } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showChatbot, setShowChatbot] = useState(false);
   const [chatReceiver, setChatReceiver] = useState(null);
-  const [hostedEventsKey, setHostedEventsKey] = useState(0);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // State for the sidebar
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [jobPostKey, setJobPostKey] = useState(0); // Key to trigger re-fetch
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard": return <DashboardView />;
+      case "mentorship": return (<Tabs defaultValue="requests" className="w-full"><TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6"><TabsTrigger value="requests">Pending Requests</TabsTrigger><TabsTrigger value="mentees">My Mentees</TabsTrigger></TabsList><TabsContent value="requests"><MentorshipRequests /></TabsContent><TabsContent value="mentees"><MyMentees onStartChat={setChatReceiver} /></TabsContent></Tabs>);
+      case "events": return (<Tabs defaultValue="host"><TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6"><TabsTrigger value="host"><PlusCircle className="h-4 w-4 mr-2" /> Host an Event</TabsTrigger><TabsTrigger value="my-events"><Calendar className="h-4 w-4 mr-2" /> My Hosted Events</TabsTrigger></TabsList><TabsContent value="host"><HostEventForm onEventProposed={() => {}} /></TabsContent><TabsContent value="my-events"><MyHostedEvents /></TabsContent></Tabs>);
+      case "community": return <CommunityForum />;
+      case "jobs": return (<Tabs defaultValue="post-job"><TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6"><TabsTrigger value="post-job"><PlusCircle className="h-4 w-4 mr-2"/>Post a Job</TabsTrigger><TabsTrigger value="my-posts"><Briefcase className="h-4 w-4 mr-2"/>My Posts</TabsTrigger></TabsList><TabsContent value="post-job"><JobPostForm onJobPosted={() => setJobPostKey(k => k + 1)} /></TabsContent><TabsContent value="my-posts"><MyJobPosts keyProp={jobPostKey} onJobDeleted={() => setJobPostKey(k => k + 1)} /></TabsContent></Tabs>);
+      case "profile": return <AlumniProfile />;
+      default: return <DashboardView />;
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Sidebar */}
-      <AlumniSidebar
+      <AlumniSidebar 
         isCollapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onToggle={() => setSidebarCollapsed(!isSidebarCollapsed)}
         activeTab={activeTab}
         onSetActiveTab={setActiveTab}
         onLogout={logout}
       />
-
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        {/* Topbar */}
-        <AlumniTopbar
-          notifications={notifications}
-          clearNotifications={clearNotifications}
+        <AlumniTopbar 
           onToggleChatbot={() => setShowChatbot(!showChatbot)}
-           setActiveTab={setActiveTab} // Pass the setActiveTab prop here
+          setActiveTab={setActiveTab}
         />
-
-        {/* Dynamic Content */}
-        <div className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
-          {activeTab === "dashboard" && <DashboardView />}
-          {activeTab === "mentorship" && (
-            <Tabs defaultValue="requests" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6">
-                <TabsTrigger value="requests">Pending Requests</TabsTrigger>
-                <TabsTrigger value="mentees">My Mentees</TabsTrigger>
-              </TabsList>
-              <TabsContent value="requests">
-                <MentorshipRequests />
-              </TabsContent>
-              <TabsContent value="mentees">
-                <MyMentees onStartChat={setChatReceiver} />
-              </TabsContent>
-            </Tabs>
-          )}
-          {activeTab === "events" && (
-            <Tabs defaultValue="host">
-              <TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6">
-                <TabsTrigger value="host">
-                  <PlusCircle className="h-4 w-4 mr-2" /> Host an Event
-                </TabsTrigger>
-                <TabsTrigger value="my-events">
-                  <Calendar className="h-4 w-4 mr-2" /> My Hosted Events
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="host">
-                <HostEventForm onEventProposed={() => setHostedEventsKey((k) => k + 1)} />
-              </TabsContent>
-              <TabsContent value="my-events">
-                <MyHostedEvents keyProp={hostedEventsKey} />
-              </TabsContent>
-            </Tabs>
-          )}
-          {activeTab === "community" && <StudentCommunity />}
-          {activeTab === "profile" && <AlumniProfile />}
-          {activeTab === "jobs" && (
-            <Tabs defaultValue="post">
-              <TabsList className="grid w-full grid-cols-2 md:w-1/3 mb-6">
-                <TabsTrigger value="post">
-                  <PlusCircle className="h-4 w-4 mr-2" /> Post a Job
-                </TabsTrigger>
-                <TabsTrigger value="my-jobs">
-                  <Briefcase className="h-4 w-4 mr-2" /> My Job Posts
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="post">
-                <JobPostForm onJobPosted={() => setHostedEventsKey((k) => k + 1)} />
-              </TabsContent>
-              <TabsContent value="my-jobs">
-                <MyJobPosts keyProp={hostedEventsKey} />
-              </TabsContent>
-            </Tabs>
-          )}
-        </div>
+        <main className="flex-1 p-8 overflow-y-auto">
+          {renderContent()}
+        </main>
       </div>
+      {chatReceiver && <ChatWindow receiver={chatReceiver} onClose={() => setChatReceiver(null)} />}
       {showChatbot && (
                 <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transition-all duration-300">
                     <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl">
@@ -583,8 +516,7 @@ export default function AlumniDashboard() {
                     <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
                     <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
                 </div>
-        )}
-      {chatReceiver && <ChatWindow receiver={chatReceiver} onClose={() => setChatReceiver(null)} />}
+      )}
     </div>
   );
 }

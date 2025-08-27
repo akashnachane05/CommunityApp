@@ -2,7 +2,7 @@ const Alumni = require('../models/Alumni');
 const Student = require('../models/Students');
 const Mentorship = require('../models/Mentorship');
 const Event = require('../models/Event');
-
+const Job = require('../models/Job');
 // --- Network Stats (unchanged) ---
 exports.getNetworkStats = async (req, res) => {
     try {
@@ -56,6 +56,34 @@ exports.getAlumniDashboardStats = async (req, res) => {
         });
     } catch (error) {
         console.error("Error fetching alumni dashboard stats:", error);
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+// --- ✅ NEW: Admin Dashboard Stats ---
+exports.getAdminDashboardStats = async (req, res) => {
+    try {
+        const [
+            totalStudents,
+            totalAlumni,
+            totalEvents,
+            pendingEvents,
+            totalJobs
+        ] = await Promise.all([
+            Student.countDocuments(),
+            Alumni.countDocuments(),
+            Event.countDocuments(),
+            Event.countDocuments({ status: 'Pending' }),
+            Job.countDocuments()
+        ]);
+
+        res.json({
+            totalUsers: totalStudents + totalAlumni,
+            totalEvents,
+            pendingEvents,
+            totalJobs
+        });
+    } catch (error) {
+        console.error("Error fetching admin dashboard stats:", error);
         res.status(500).json({ message: "Server Error" });
     }
 };

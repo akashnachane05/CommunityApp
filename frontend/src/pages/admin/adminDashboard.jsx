@@ -12,8 +12,54 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Badge } from "../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/Dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { Users, Calendar, MessageSquare, Trash2, Flag, PlusCircle, Check, X, Clock } from "lucide-react";
+import { Users, Calendar, MessageSquare, Trash2, Flag, PlusCircle, Check, X, Clock,Briefcase,Bot,ArrowRight} from "lucide-react";
 import { useToast } from "../../components/ui/use-toast";
+import AdminSidebar from "./AdminSidebar";
+import AdminTopbar from "./AdminTopbar";
+// --- Dashboard View Component ---
+// --- Dashboard View Component (Corrected and Restyled) ---
+const DashboardView = () => {
+    const [stats, setStats] = useState({});
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await api.get("/stats/admin-dashboard");
+                setStats(res.data);
+            } catch (err) { console.error(err); } finally { setLoading(false); }
+        };
+        fetchStats();
+    }, []);
+
+    // ✅ ADDED: Color properties to match other dashboards
+    const statCards = [
+        { label: "Total Users", value: stats.totalUsers, icon: <Users className="h-5 w-5"/>, color: "bg-blue-500" },
+        { label: "Total Events", value: stats.totalEvents, icon: <Calendar className="h-5 w-5"/>, color: "bg-purple-500" },
+        { label: "Pending Events", value: stats.pendingEvents, icon: <Clock className="h-5 w-5"/>, color: "bg-orange-500" },
+        { label: "Total Jobs Posted", value: stats.totalJobs, icon: <Briefcase className="h-5 w-5"/>, color: "bg-green-500" },
+    ];
+
+    if (loading) return <p>Loading statistics...</p>;
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {statCards.map(stat => (
+                // ✅ UPDATED: New Card structure for consistent styling
+                <Card key={stat.label} className="border-0 shadow-lg bg-white/70 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className={`p-3 rounded-xl ${stat.color} text-white`}>{stat.icon}</div>
+                        </div>
+                        <div>
+                            <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value !== undefined ? stat.value : '...'}</p>
+                            <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+};
 
 // --- ManageUsers Component ---
 const ManageUsers = () => {
@@ -370,24 +416,104 @@ const ManageForum = () => {
 };
 
 // --- Main Admin Dashboard Component ---
+// --- ✅ NEW: ManageJobs Component ---
+// --- ✅ NEW: ManageJobs Component ---
+const ManageJobs = () => {
+    const [jobs, setJobs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    const fetchJobs = async () => {
+        try {
+            const res = await api.get("/jobs/all");
+            setJobs(res.data);
+        } catch (err) { console.error("Failed to load jobs", err); } finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchJobs(); }, []);
+
+    const deleteJob = async (jobId) => {
+        if (!window.confirm("Permanently delete this job posting?")) return;
+        try {
+            await api.delete(`/jobs/${jobId}`);
+            toast({ title: "Job Deleted" });
+            fetchJobs();
+        } catch (err) {
+            toast({ variant: "destructive", title: "Error", description: "Could not delete job." });
+        }
+    };
+
+    if (loading) return <p>Loading jobs...</p>;
+
+    return (
+        <Card>
+            <CardHeader><CardTitle>Manage Job Postings</CardTitle></CardHeader>
+            <CardContent>
+                <ul className="space-y-3">
+                    {jobs.map(job => (
+                        <li key={job._id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold">{job.title} @ {job.company}</p>
+                                <p className="text-sm text-gray-500">Posted by: {job.postedBy?.fullName}</p>
+                            </div>
+                            <Button size="sm" variant="destructive" onClick={() => deleteJob(job._id)}><Trash2 className="h-4 w-4"/></Button>
+                        </li>
+                    ))}
+                </ul>
+            </CardContent>
+        </Card>
+    );
+};
+
+
 export default function AdminDashboard() {
+  const { user,logout } = useAuth();
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false); // ✅ State for chatbot visibility
+ 
+ 
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard": return <DashboardView />;
+      case "users": return <ManageUsers />;
+      case "events": return <ManageEvents />;
+      case "forum": return <ManageForum />;
+      case "jobs": return <ManageJobs />;
+      default: return <DashboardView />;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="max-w-7xl mx-auto p-6 mt-8">
-        <h2 className="text-2xl font-semibold mb-6">Admin Dashboard</h2>
-        <Tabs defaultValue="users">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="users"><Users className="h-4 w-4 mr-2" /> Manage Users</TabsTrigger>
-            <TabsTrigger value="events"><Calendar className="h-4 w-4 mr-2" /> Manage Events</TabsTrigger>
-            <TabsTrigger value="forum"><MessageSquare className="h-4 w-4 mr-2" /> Manage Forum</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="users"><ManageUsers /></TabsContent>
-          <TabsContent value="events"><ManageEvents /></TabsContent>
-          <TabsContent value="forum"><ManageForum /></TabsContent>
-        </Tabs>
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <AdminSidebar 
+        isCollapsed={isSidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!isSidebarCollapsed)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        logout={logout}
+      />
+      <div className="flex-1 flex flex-col">
+        {/* ✅ Pass the toggle function to the Topbar */}
+        <AdminTopbar onToggleChatbot={() => setShowChatbot(!showChatbot)} />
+        <main className="flex-1 p-8 overflow-y-auto">
+          {renderContent()}
+        </main>
       </div>
+
+      {/* ✅ Chatbot Popup UI */}
+      {showChatbot && (
+        <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border z-50">
+          <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl">
+            <div className="flex items-center space-x-2"><Bot className="h-5 w-5 text-white" /><span className="text-white font-medium">AI Assistant</span></div>
+            <Button variant="ghost" size="sm" onClick={() => setShowChatbot(false)} className="text-white hover:bg-white/20 h-6 w-6 p-0"><X className="h-4 w-4" /></Button>
+          </div>
+          <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help you manage the platform.</p></div></div></div>
+          <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
+        </div>
+      )}
+
     </div>
   );
 }

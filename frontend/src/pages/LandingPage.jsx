@@ -147,9 +147,9 @@ export default function LandingPage() {
 
             <footer className="bg-gray-900 text-white py-16">
                 <div className="container mx-auto px-4 text-center">
-                    <VitaaLogo />
+                   
                     <p className="text-gray-400 my-8 max-w-md mx-auto">Connecting VIT Pune's past, present, and future generations through technology and mentorship.</p>
-                    <Link to="/register"><Button size="lg" variant="secondary" className="text-lg px-8 py-4 rounded-full">Sign Up for Free</Button></Link>
+                    <Link to="/register"><Button size="lg" variant="secondary" className="text-lg px-8 py-4 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">Sign Up for Free</Button></Link>
                 </div>
             </footer>
         </div>

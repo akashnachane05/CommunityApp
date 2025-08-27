@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { User, Users, Calendar, BookOpen, MessageCircle, Bot, X, ArrowRight, Home, Bell, Award, Zap, Star, Briefcase, Menu, X as CloseIcon, LogOut } from "lucide-react"; // LogOut icon added
+import { User, Users, Calendar, BookOpen, MessageCircle, Bot, X, ArrowRight, Home, Bell, Award, Zap, Star, Briefcase, Menu, X as CloseIcon, LogOut, UserPlus } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../auth/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
@@ -7,6 +7,9 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { Progress } from "../../components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/Dialog";
+import { Textarea } from "../../components/ui/textarea";
+import { useToast } from "../../components/ui/use-toast";
 import StudentProfile from "./StudentProfile";
 import StudentAlumni from "./StudentAlumni";
 import StudentCommunity from "./StudentCommunity";
@@ -18,20 +21,28 @@ import StudentJobs from "./StudentJobs";
 
 // --- DashboardView Component (No changes to logic, just cleaned up) ---
 const DashboardView = ({ setActiveTab }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
     const [stats, setStats] = useState(null);
     const [matches, setMatches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedMentor, setSelectedMentor] = useState(null);
+    const [goals, setGoals] = useState("");
+    const [requestedMentors, setRequestedMentors] = useState(new Set());
+    const [isRequesting, setIsRequesting] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [statsRes, matchesRes] = await Promise.all([
+                const [statsRes, matchesRes, requestsRes] = await Promise.all([
                     api.get("/stats/student-dashboard"),
-                    api.get("/recommendations/matches")
+                    api.get("/recommendations/matches"),
+                    api.get("/mentorships/my-requests")
                 ]);
                 setStats(statsRes.data);
                 setMatches(matchesRes.data);
+                setRequestedMentors(new Set(requestsRes.data.map(req => req.mentor._id)));
             } catch (error) {
                 console.error("Failed to load dashboard data", error);
             } finally {
@@ -51,6 +62,36 @@ const DashboardView = ({ setActiveTab }) => {
         if (profile.careerGoal) score++;
         if (profile.industryInterestOrField?.length > 0) score++;
         return Math.round((score / totalFields) * 100);
+    };
+
+    const handleConnectClick = (alumni) => {
+        setSelectedMentor(alumni);
+    };
+
+    const handleSendRequest = async () => {
+        if (!selectedMentor) return;
+        setIsRequesting(true);
+        try {
+            await api.post("/mentorships/request", {
+                mentorId: selectedMentor.userId._id,
+                goals,
+            });
+            toast({
+                title: "Request Sent!",
+                description: `Your mentorship request has been sent to ${selectedMentor.userId.fullName}.`,
+            });
+            setRequestedMentors(prev => new Set(prev).add(selectedMentor.userId._id));
+            setSelectedMentor(null);
+            setGoals("");
+        } catch (err) {
+            toast({
+                variant: "destructive",
+                title: "Failed to Send Request",
+                description: err.response?.data?.message || "There was an error sending your request.",
+            });
+        } finally {
+            setIsRequesting(false);
+        }
     };
 
     const profileCompletion = calculateProfileCompletion(stats?.studentProfile);
@@ -105,14 +146,42 @@ const DashboardView = ({ setActiveTab }) => {
                                         <p className="text-sm text-gray-600">{alumni.currentJob}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center text-green-600 font-semibold">
-                                    <Star className="h-4 w-4 mr-1" />
-                                    <span className="text-sm">{score} Match Score</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center text-green-600 font-semibold">
+                                        <Star className="h-4 w-4 mr-1" />
+                                        <span className="text-sm">{score} Match Score</span>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => handleConnectClick(alumni)}
+                                        disabled={requestedMentors.has(alumni.userId._id)}
+                                        className="h-8"
+                                    >
+                                        {requestedMentors.has(alumni.userId._id) ? "Requested" : "Connect"}
+                                        <UserPlus className="h-4 w-4 ml-1" />
+                                    </Button>
                                 </div>
                             </div>
                         ))}
                 </CardContent>
             </Card>
+            {/* Connection Request Dialog */}
+            <Dialog open={!!selectedMentor} onOpenChange={(open) => !open && setSelectedMentor(null)}>
+                {selectedMentor && (
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Request Mentorship from {selectedMentor.userId.fullName}</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                            <p className="text-sm text-gray-600">Briefly describe what you hope to achieve from this mentorship.</p>
+                            <Textarea placeholder="E.g., I need help with my resume and interview preparation..." value={goals} onChange={(e) => setGoals(e.target.value)} />
+                            <Button onClick={handleSendRequest} disabled={isRequesting} className="w-full">
+                                {isRequesting ? "Sending..." : "Send Request"}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                )}
+            </Dialog>
         </div>
     );
 };

@@ -1,6 +1,7 @@
-// in controllers/conversationController.js
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const Notification = require('../models/Notification'); // 1. Import the Notification model
+const User = require('../models/User'); // 2. Import the User model to get the sender's name
 
 // Get or create a conversation between two users
 exports.getConversation = async (req, res) => {
@@ -30,21 +31,27 @@ exports.sendMessage = async (req, res) => {
         const { conversationId } = req.params;
         const senderId = req.user.id;
 
-        const newMessage = new Message({
-            conversationId,
-            sender: senderId,
-            text: message,
-        });
-
+        const newMessage = new Message({ conversationId, sender: senderId, text: message });
         await newMessage.save();
 
-        // Also update the lastMessage in the conversation
-        await Conversation.findByIdAndUpdate(conversationId, {
-            lastMessage: {
-                text: message,
-                sender: senderId,
-            },
+        const conversation = await Conversation.findByIdAndUpdate(conversationId, {
+            lastMessage: { text: message, sender: senderId },
         });
+        
+        // --- ✅ START: Notification Logic ---
+        const recipientId = conversation.participants.find(p => p.toString() !== senderId);
+        if (recipientId) {
+            const sender = await User.findById(senderId);
+            const notification = new Notification({
+                recipient: recipientId,
+                sender: senderId,
+                type: 'NEW_MESSAGE',
+                message: `You have a new message from ${sender.fullName}.`,
+                link: `/chat/${senderId}` // Link to the chat with the sender
+            });
+            await notification.save();
+        }
+        // --- END: Notification Logic ---
         
         res.status(201).json(newMessage);
     } catch (error) {

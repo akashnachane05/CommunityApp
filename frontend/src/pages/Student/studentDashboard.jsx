@@ -19,6 +19,10 @@ import StudentMentorship from "./StudentMentorship";
 import ProfileMenu from "./ProfileMenu";
 import StudentJobs from "./StudentJobs";
 import CommunityForum from "../../components/CommunityForum";
+import NotificationDropdown from "../../components/NotificationDropdown";
+import StudentSidebar from "./StudentSidebar";
+import StudentTopbar from "./StudentTopbar";
+import ChatWindow from "../../components/ChatWindow";
 // --- DashboardView Component (No changes to logic, just cleaned up) ---
 const DashboardView = ({ setActiveTab }) => {
     const { user } = useAuth();
@@ -191,7 +195,8 @@ export default function StudentDashboard() {
     const { user, logout, notifications, clearNotifications } = useAuth();
     const [activeTab, setActiveTab] = useState("dashboard");
     const [showChatbot, setShowChatbot] = useState(false);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [chatReceiver, setChatReceiver] = useState(null);
 
     const navItems = [
         { name: "Dashboard", tab: "dashboard", icon: <Home className="h-5 w-5" /> },
@@ -217,80 +222,44 @@ export default function StudentDashboard() {
         }
     };
 
+    const handleNotificationClick = (sender) => {
+        // This function will be passed down to open the chat window
+        setChatReceiver(sender);
+    };
+
+
     return (
-        <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-            {/* Sidebar */}
-            <aside className={`fixed top-0 left-0 h-full bg-white shadow-xl transition-all duration-300 z-50 flex flex-col ${isSidebarOpen ? "w-64" : "w-16"}`}>
-                <div className="flex items-center justify-between p-4 h-16 border-b border-gray-200">
-                    <div className={`flex items-center space-x-2 transition-opacity duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0"}`}>
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold text-lg">V</span>
-                        </div>
-                        <span className="text-xl font-bold text-gray-900">VITAA</span>
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className="ml-auto hover:bg-gray-100"
-                    >
-                        {isSidebarOpen ? <CloseIcon className="h-5 w-5 text-gray-700" /> : <Menu className="h-5 w-5 text-gray-700" />}
-                    </Button>
-                </div>
-                <nav className="flex-1 flex flex-col p-2 space-y-1 mt-4">
-                    {navItems.map(item => (
-                        <Button
-                            key={item.tab}
-                            variant="ghost"
-                            onClick={() => setActiveTab(item.tab)}
-                            className={`flex items-center justify-start h-12 w-full text-left rounded-lg transition-colors duration-200 ${activeTab === item.tab ? "bg-blue-100 text-blue-700 font-semibold" : "text-gray-700 hover:bg-gray-100"}`}
-                        >
-                            <span className="w-8 flex justify-center items-center">{item.icon}</span>
-                            <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 w-0 overflow-hidden"}`}>{item.name}</span>
-                        </Button>
-                    ))}
-                </nav>
+        <div className="flex min-h-screen bg-gray-100">
+        <StudentSidebar 
+            isCollapsed={isSidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!isSidebarCollapsed)}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            logout={logout}
+            
+        />
+        <div className="flex-1 flex flex-col">
+            <StudentTopbar 
+            onToggleChatbot={() => setShowChatbot(!showChatbot)}
+            setActiveTab={setActiveTab}
+            onNotificationClick={handleNotificationClick}
+            />
+            <main className="flex-1 p-8 overflow-y-auto">
+            {renderContent()}
+            </main>
+        </div>
 
-                {/* Logout Button */}
-                <div className="p-2 border-t border-gray-200">
-                    <Button
-                        variant="ghost"
-                        onClick={logout}
-                        className={`flex items-center justify-start h-12 w-full text-left rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-200`}
-                    >
-                        <span className="w-8 flex justify-center items-center"><LogOut className="h-5 w-5" /></span>
-                        <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 w-0 overflow-hidden"}`}>Logout</span>
-                    </Button>
+        {chatReceiver && <ChatWindow receiver={chatReceiver} onClose={() => setChatReceiver(null)} />}
+        {showChatbot && (
+            <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border z-50">
+                <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl">
+                    <div className="flex items-center space-x-2"><Bot className="h-5 w-5 text-white" /><span className="text-white font-medium">AI Assistant</span></div>
+                    <Button variant="ghost" size="sm" onClick={() => setShowChatbot(false)} className="text-white hover:bg-white/20 h-6 w-6 p-0"><X className="h-4 w-4" /></Button>
                 </div>
-            </aside>
-            {/* Main Content Area */}
-            <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-64" : "ml-16"}`}>
-                {/* Top Navbar for Notifications and Profile */}
-                <header className="bg-white shadow-sm sticky top-0 z-40 px-4 py-2 flex justify-end items-center space-x-2">
-                    <Button variant="ghost" size="icon" className="relative hover:bg-gray-100" onClick={() => { alert(`You have ${notifications.length} new messages.`); clearNotifications(); }}>
-                        <Bell className="h-5 w-5 text-gray-700" />
-                        {notifications.length > 0 && (<span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>)}
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setShowChatbot(!showChatbot)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50/50"><Bot className="h-5 w-5" /></Button>
-                    <ProfileMenu user={user} setActiveTab={setActiveTab} logout={logout} />
-                </header>
-
-                <main className="p-8">
-                    {renderContent()}
-                </main>
+                <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
+                <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
             </div>
-
-            {/* Chatbot Popup */}
-            {showChatbot && (
-                <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 transition-all duration-300">
-                    <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl">
-                        <div className="flex items-center space-x-2"><Bot className="h-5 w-5 text-white" /><span className="text-white font-medium">AI Assistant</span></div>
-                        <Button variant="ghost" size="sm" onClick={() => setShowChatbot(false)} className="text-white hover:bg-white/20 h-6 w-6 p-0"><CloseIcon className="h-4 w-4" /></Button>
-                    </div>
-                    <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
-                    <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
-                </div>
-            )}
+        )}
         </div>
     );
 }

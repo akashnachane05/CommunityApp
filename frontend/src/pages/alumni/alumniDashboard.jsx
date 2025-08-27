@@ -488,6 +488,11 @@ export default function AlumniDashboard() {
     }
   };
 
+  const handleNotificationClick = (sender) => {
+        // This function will be passed down to open the chat window
+        setChatReceiver(sender);
+    };
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <AlumniSidebar 
@@ -496,11 +501,14 @@ export default function AlumniDashboard() {
         activeTab={activeTab}
         onSetActiveTab={setActiveTab}
         onLogout={logout}
+        
       />
       <div className="flex-1 flex flex-col">
         <AlumniTopbar 
           onToggleChatbot={() => setShowChatbot(!showChatbot)}
           setActiveTab={setActiveTab}
+          // ✅ Pass the notification handler to the Topbar
+          onNotificationClick={handleNotificationClick}
         />
         <main className="flex-1 p-8 overflow-y-auto">
           {renderContent()}
@@ -515,7 +523,7 @@ export default function AlumniDashboard() {
                     </div>
                     <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
                     <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
-                </div>
+        </div>
       )}
     </div>
   );

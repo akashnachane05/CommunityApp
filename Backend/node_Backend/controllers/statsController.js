@@ -3,6 +3,7 @@ const Student = require('../models/Students');
 const Mentorship = require('../models/Mentorship');
 const Event = require('../models/Event');
 const Job = require('../models/Job');
+const User = require('../models/User');
 // --- Network Stats (unchanged) ---
 exports.getNetworkStats = async (req, res) => {
     try {
@@ -84,6 +85,33 @@ exports.getAdminDashboardStats = async (req, res) => {
         });
     } catch (error) {
         console.error("Error fetching admin dashboard stats:", error);
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
+// --- ✅ NEW: Public Landing Page Stats ---
+exports.getPublicStats = async (req, res) => {
+    try {
+        const [
+            alumniCount,
+            studentCount,
+            mentorshipsCount,
+            eventsCount
+        ] = await Promise.all([
+            User.countDocuments({ role: 'Alumni' }),
+            User.countDocuments({ role: 'Student' }),
+            Mentorship.countDocuments({ status: 'Accepted' }),
+            Event.countDocuments({ status: 'Approved' })
+        ]);
+
+        res.json({
+            alumniCount,
+            studentCount,
+            mentorshipsCount,
+            eventsCount
+        });
+    } catch (error) {
+        console.error("Error fetching public stats:", error);
         res.status(500).json({ message: "Server Error" });
     }
 };

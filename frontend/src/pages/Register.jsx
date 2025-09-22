@@ -8,9 +8,11 @@ import { Label } from "../components/ui/label"
 import { Separator } from "../components/ui/separator"
 import { Alert, AlertDescription } from "../components/ui/alert"
 import { Mail, Lock, User, Shield, ArrowLeft } from "lucide-react"
-
+import api from "../api/axios"; 
+import { useToast } from "../components/ui/use-toast"
 export default function Register() {
   const { register, loading, error } = useAuth()
+  const { toast } = useToast()
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -21,13 +23,45 @@ export default function Register() {
 
   const navigate = useNavigate()
 
+  const [showVerify, setShowVerify] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [code, setCode] = useState("");
+  const [registerError, setRegisterError] = useState("");
+
   const onSubmit = async (e) => {
-    e.preventDefault()
-    const payload = { ...form }
-    if (payload.role !== "Admin") delete payload.secretCode
-    const success = await register(payload)
-    if (success) navigate("/dashboard") // redirect after successful registration
-  }
+    e.preventDefault();
+    setRegisterError(""); 
+    const allowedDomains = ["@vit.edu", "@viit.ac.in"];
+    if (
+      form.role === "Student" &&
+      !allowedDomains.some(domain => form.email.endsWith(domain))
+    ) {
+      setRegisterError("Only VIT/VIIT students can register with a valid email.");
+      return;
+    }
+    const payload = { ...form };
+    if (payload.role !== "Admin") delete payload.secretCode;
+    const success = await register(payload);
+    if (success && (form.role === "Student" || form.role === "Alumni")) {
+      setShowVerify(true); // Show code entry form
+    } else if (success) {
+      navigate("/dashboard");
+    }
+  };
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    setVerifyError("");
+    try {
+      await api.post("/users/verify-code", { email: form.email, code });
+      toast({ title: "Email Verified", description: "You can now log in." });
+      navigate("/login");
+    } catch (err) {
+      setVerifyError(
+        err?.response?.data?.message || "Verification failed."
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex justify-center items-center p-6">
@@ -61,104 +95,119 @@ export default function Register() {
             )}
 
             {/* Registration form */}
-            <form onSubmit={onSubmit} className="space-y-4">
-              {/* Full Name */}
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="fullName"
-                    name="fullName"
-                    placeholder="Enter your full name"
-                    value={form.fullName}
-                    onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={form.email}
-                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={form.password}
-                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Role */}
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <select
-                  id="role"
-                  name="role"
-                  value={form.role}
-                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-                  className="w-full border rounded-lg p-2"
-                >
-                  <option>Student</option>
-                  <option>Alumni</option>
-                  <option>Admin</option>
-                </select>
-              </div>
-
-              {/* Secret Code (only for Admins) */}
-              {form.role === "Admin" && (
+            {showVerify ? (
+              <form onSubmit={handleVerify}>
+                <Label>Enter the 6-digit code sent to your email</Label>
+                <Input value={code} onChange={e => setCode(e.target.value)} required />
+                <Button type="submit">Verify Email</Button>
+                {verifyError && <Alert>{verifyError}</Alert>}
+              </form>
+            ) : (
+              <form onSubmit={onSubmit} className="space-y-4">
+                 {/* ADD THIS BLOCK */}
+                  {registerError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{registerError}</AlertDescription>
+                    </Alert>
+                  )}
+                {/* Full Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="secretCode">Admin Secret Code</Label>
+                  <Label htmlFor="fullName">Full Name</Label>
                   <div className="relative">
-                    <Shield className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="secretCode"
-                      name="secretCode"
-                      placeholder="Enter secret code"
-                      value={form.secretCode}
-                      onChange={(e) => setForm((f) => ({ ...f, secretCode: e.target.value }))}
+                      id="fullName"
+                      name="fullName"
+                      placeholder="Enter your full name"
+                      value={form.fullName}
+                      onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
                       className="pl-10"
                       required
                     />
                   </div>
                 </div>
-              )}
 
-              {/* Submit */}
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                disabled={loading}
-              >
-                {loading ? "Creating..." : "Create Account"}
-              </Button>
-            </form>
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={form.email}
+                      onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={form.password}
+                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Role */}
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <select
+                    id="role"
+                    name="role"
+                    value={form.role}
+                    onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+                    className="w-full border rounded-lg p-2"
+                  >
+                    <option>Student</option>
+                    <option>Alumni</option>
+                    <option>Admin</option>
+                  </select>
+                </div>
+
+                {/* Secret Code (only for Admins) */}
+                {form.role === "Admin" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="secretCode">Admin Secret Code</Label>
+                    <div className="relative">
+                      <Shield className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="secretCode"
+                        name="secretCode"
+                        placeholder="Enter secret code"
+                        value={form.secretCode}
+                        onChange={(e) => setForm((f) => ({ ...f, secretCode: e.target.value }))}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  disabled={loading}
+                >
+                  {loading ? "Creating..." : "Create Account"}
+                </Button>
+              </form>
+            )}
 
             {/* Divider */}
             <div className="relative">

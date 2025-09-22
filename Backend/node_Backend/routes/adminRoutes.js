@@ -8,5 +8,6 @@ router.post('/', auth(['Admin']), adminController.createAdmin);
 router.get('/', auth(['Admin']), adminController.getAllAdmins);
 router.put('/:id', auth(['Admin']), adminController.updateAdmin);
 router.delete('/:id', auth(['Admin']), adminController.deleteAdmin);
+router.get('/activity/:userId', auth(['Admin']), adminController.getUserActivity);
 
 module.exports = router;

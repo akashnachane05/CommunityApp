@@ -9,7 +9,7 @@ import { Textarea } from "../../components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Zap, TrendingUp, UserPlus, Send, Check, Search, Users } from "lucide-react";
 import api from "../../api/axios";
-
+import { useToast } from "../../components/ui/use-toast";
 // --- AI Matches Component ---
 const AiMatches = ({ requestedMentors, onConnect }) => {
     const [matches, setMatches] = useState([]);
@@ -51,6 +51,7 @@ const AlumniDirectory = ({ requestedMentors, onConnect }) => {
     const [directory, setDirectory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    
 
     const fetchDirectory = async () => {
         try {
@@ -121,7 +122,7 @@ export default function StudentAlumni() {
     const [goals, setGoals] = useState("");
     const [selectedMentor, setSelectedMentor] = useState(null);
     const [requestedMentors, setRequestedMentors] = useState(new Set());
-
+    const { toast } = useToast();
     const fetchData = async () => {
         try {
             const [statsRes, requestsRes] = await Promise.all([
@@ -141,6 +142,23 @@ export default function StudentAlumni() {
 
     const handleRequestMentorship = async () => {
         // ... (this function remains the same as before)
+         if (!goals.trim()) {
+              toast({ variant: "destructive", title: "Error", description: "Please state your goals for this mentorship." });
+              return;
+            }
+            try {
+              await api.post("/mentorships/request", {
+                mentorId: selectedMentor.userId._id,
+                studentGoals: goals,
+              });
+              toast({ title: "Success!", description: "Mentorship request sent." });
+              setSelectedMentor(null);
+              setGoals("");
+              fetchData();
+            } catch (err) {
+              toast({ variant: "destructive", title: "Error", description: err.response?.data?.message || "Failed to send request." });
+              
+            }
     };
 
     const handleConnectClick = (alumni) => {

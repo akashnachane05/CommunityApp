@@ -7,7 +7,8 @@ const {
     getMyHostedEvents,
     getPendingEvents,
     updateEventStatus
-    , adminGetAllEvents
+    , adminGetAllEvents,
+    getEventDetailsForAdmin
 } = require('../controllers/eventController');
 const auth = require('../middleware/auth');
 
@@ -24,5 +25,5 @@ router.get('/all-admin', auth(['Admin']), adminGetAllEvents); // ✅ ADD THIS NE
 router.post('/admin-create', auth(['Admin']), createEvent); // Admins create an event directly
 router.get('/pending', auth(['Admin']), getPendingEvents);
 router.put('/status/:id', auth(['Admin']), updateEventStatus);
-
+router.get('/admins/:id', auth(['Admin']), getEventDetailsForAdmin);
 module.exports = router;

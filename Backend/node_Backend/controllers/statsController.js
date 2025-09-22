@@ -25,7 +25,7 @@ exports.getStudentDashboardStats = async (req, res) => {
         const [studentProfile, acceptedMenteeships, eventsAttended] = await Promise.all([
             Student.findOne({ userId: studentId }),
             Mentorship.countDocuments({ student: studentId, status: 'Accepted' }),
-            Event.countDocuments({ attendees: studentId, date: { $lt: new Date() } })
+            Event.countDocuments({ "attendees.studentId": studentId })
         ]);
         res.json({ studentProfile, acceptedMenteeships, eventsAttended });
     } catch (error) {

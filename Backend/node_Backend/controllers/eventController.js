@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const User = require('../models/User');
+const Student = require('../models/Students');
 
 // FOR STUDENTS: Get all APPROVED events
 exports.getAllEvents = async (req, res) => {
@@ -33,17 +34,44 @@ exports.createEvent = async (req, res) => {
 exports.registerForEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    if (!event) return res.status(404).json({ message: 'Event not found' });
-    if (event.attendees.includes(req.user.id)) {
-      return res.status(400).json({ message: 'Already registered' });
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    const studentProfile = await Student.findOne({ userId: req.user.id });
+    if (!studentProfile)
+      return res.status(404).json({ message: "Student profile not found." });
+
+    const userDoc = await User.findById(req.user.id).select("fullName email");
+
+    const attendeeDetails = {
+      studentId: req.user.id,
+      fullName: userDoc?.fullName || "Unnamed User",
+      branch: studentProfile.branch,
+      grNo: studentProfile.grNo,
+      email: userDoc?.email || "No Email",
+    };
+
+    // ✅ Use $addToSet to avoid duplicates
+    const updatedEvent = await Event.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { attendees: attendeeDetails } },
+      { new: true }
+    );
+
+    if (typeof recordActivity === "function") {
+      await recordActivity(req.user.id, "EVENT_REGISTERED", {
+        eventId: updatedEvent._id,
+        eventTitle: updatedEvent.title,
+      });
     }
-    event.attendees.push(req.user.id);
-    await event.save();
-    res.json(event);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+
+    res.status(200).json(updatedEvent);
+  } catch (error) {
+    console.error("Event registration error:", error);
+    res.status(500).json({ message: "Server Error" });
   }
 };
+
+
 
 // FOR ALUMNI: Get events they have created
 exports.getMyHostedEvents = async (req, res) => {
@@ -70,15 +98,19 @@ exports.getPendingEvents = async (req, res) => {
 // FOR ADMINS: Approve or reject an event
 exports.updateEventStatus = async (req, res) => {
     try {
-        const { status } = req.body;
-        const event = await Event.findById(req.params.id);
+        const { status, rejectionReason } = req.body; // Get reason from request body
+        
+        const updateData = { status };
+        if (status === 'Rejected' && rejectionReason) {
+            updateData.rejectionReason = rejectionReason;
+        }
+
+        const event = await Event.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!event) return res.status(404).json({ message: 'Event not found' });
         
-        event.status = status;
-        await event.save();
-        res.json(event);
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(200).json(event);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
     }
 };
 
@@ -91,5 +123,18 @@ exports.adminGetAllEvents = async (req, res) => {
         res.json(events);
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
+    }
+};
+exports.getEventDetailsForAdmin = async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.id)
+            // No need to populate attendees here since we stored the details directly
+        
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+        res.json(event);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
     }
 };

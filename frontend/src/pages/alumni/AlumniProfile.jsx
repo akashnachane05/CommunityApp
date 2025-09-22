@@ -22,14 +22,14 @@ import { Badge } from "../../components/ui/badge";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { useAuth } from "../../auth/AuthContext";
 import api from "../../api/axios";
-
+import { useToast } from "../../components/ui/use-toast";
 export default function AlumniProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-
+  const { toast } = useToast();
   const [form, setForm] = useState({
     Bio: "",
     skills: "",
@@ -83,9 +83,10 @@ export default function AlumniProfile() {
       await api.put("/alumni/me", payload);
       await fetchProfile();
       setIsEditing(false);
-      alert("Profile updated successfully!");
+      toast({ title: "Profile Updated", description: "Your alumni profile has been updated." });
     } catch (err) {
-      alert(err?.response?.data?.message || "Failed to update profile");
+      toast({ variant: "destructive", title: "Error", description: err?.response?.data?.message || "Failed to update profile." });
+      
     }
   };
 
@@ -94,7 +95,7 @@ export default function AlumniProfile() {
       await api.post("/alumni", {});
       await fetchProfile();
     } catch (err) {
-      alert(err?.response?.data?.message || "Failed to create profile");
+      toast({ variant: "destructive", title: "Error", description: err?.response?.data?.message || "Failed to create profile." });
     }
   };
 

@@ -1,5 +1,5 @@
 const Admin = require('../models/Admins');
-
+const Activity = require('../models/Activity')
 // ====================
 // Create Admin Profile (used internally or Admin registration)
 // ====================
@@ -90,4 +90,14 @@ exports.deleteAdmin = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
+};
+
+exports.getUserActivity = async (req, res) => {
+    try {
+        const activities = await Activity.find({ user: req.params.userId })
+            .sort({ createdAt: -1 });
+        res.json(activities);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
 };

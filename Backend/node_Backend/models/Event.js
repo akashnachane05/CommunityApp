@@ -12,10 +12,6 @@ const eventSchema = new mongoose.Schema({
     enum: ['Webinar', 'Workshop', 'Meetup'],
     default: 'Webinar'
   },
-  attendees: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
   hostedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -26,7 +22,6 @@ const eventSchema = new mongoose.Schema({
     enum: ['Pending', 'Approved', 'Rejected'],
     default: 'Pending'
   },
-  // ✅ NEW FIELDS FOR EVENT MODE
   mode: {
     type: String,
     enum: ['Online', 'Offline'],
@@ -37,18 +32,28 @@ const eventSchema = new mongoose.Schema({
   },
   meetingLink: { // For 'Online' events
     type: String,
-  }
+  },
+  // ✅ Store detailed attendee info only
+  attendees: [{
+    studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    fullName: { type: String },
+    email: { type: String },
+    branch: { type: String },
+    grNo: { type: String },
+    registeredAt: { type: Date, default: Date.now }
+  }],
+  rejectionReason: { type: String },
 }, { timestamps: true });
 
-// Add a conditional requirement for location/meetingLink
+// Conditional requirement for location/meetingLink
 eventSchema.pre('save', function(next) {
-    if (this.mode === 'Offline' && !this.location) {
-        next(new Error('Location is required for offline events.'));
-    } else if (this.mode === 'Online' && !this.meetingLink) {
-        next(new Error('Meeting link is required for online events.'));
-    } else {
-        next();
-    }
+  if (this.mode === 'Offline' && !this.location) {
+    next(new Error('Location is required for offline events.'));
+  } else if (this.mode === 'Online' && !this.meetingLink) {
+    next(new Error('Meeting link is required for online events.'));
+  } else {
+    next();
+  }
 });
 
 const Event = mongoose.models.Event || mongoose.model('Event', eventSchema);

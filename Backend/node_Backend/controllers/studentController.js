@@ -17,7 +17,9 @@ exports.createStudent = async (req, res) => {
       interests: req.body.interests || [],
       educationHistory: req.body.educationHistory || [],
       industryInterestOrField: req.body.industryInterestOrField || [],
-      careerGoal: req.body.careerGoal || ''
+      careerGoal: req.body.careerGoal || '',
+      branch: req.body.branch || '',
+      grNo: req.body.grNo || ''
     });
 
     await student.save();
@@ -54,7 +56,9 @@ exports.updateMyStudentProfile = async (req, res) => {
       interests: req.body.interests || [],
       educationHistory: req.body.educationHistory || [],
       industryInterestOrField: req.body.industryInterestOrField || [],
-      careerGoal: req.body.careerGoal || ''
+      careerGoal: req.body.careerGoal || '',
+      branch: req.body.branch || '',
+      grNo: req.body.grNo || ''
     };
 
     const student = await Student.findOneAndUpdate(

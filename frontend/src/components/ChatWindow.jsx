@@ -56,8 +56,8 @@ export default function ChatWindow({ receiver, onClose }) {
     };
     socket.emit('sendMessage', socketPayload);
 
-    // Optimistic update for your own screen
-    setMessages((prev) => [...prev, { sender: { _id: user._id }, text: newMessage, createdAt: new Date() }]);
+    // // Optimistic update for your own screen
+    // setMessages((prev) => [...prev, { sender: { _id: user._id }, text: newMessage, createdAt: new Date() }]);
     
     // Save to DB in the background
     await api.post(`/conversations/send/${conversationId}`, { message: newMessage });

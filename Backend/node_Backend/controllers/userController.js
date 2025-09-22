@@ -1,55 +1,10 @@
-// const User = require('../models/User');
-// const jwt = require('jsonwebtoken');
-// const bcrypt = require('bcryptjs');
-
-// // Helper: create JWT
-// const generateToken = (user) => {
-//   return jwt.sign(
-//     {
-//       id: user._id,
-//       role: user.role,
-//       fullName: user.fullName,
-//       email: user.email,
-//     },
-//     process.env.JWT_SECRET,
-//     { expiresIn: '1d' }
-//   );
-// };
-
-// // ====================
-// // Register User
-// // ====================
-// exports.createUser = async (req, res) => {
-//   try {
-//     const { fullName, email, password, role, secretCode } = req.body;
-
-//     // Prevent unauthorized Admin creation
-//     if (role === 'Admin' && secretCode !== process.env.ADMIN_SECRET_CODE) {
-//       return res.status(403).json({ message: 'Invalid Admin Secret Code' });
-//     }
-
-//     const existing = await User.findOne({ email });
-//     if (existing) {
-//       return res.status(400).json({ message: 'User already exists' });
-//     }
-
-//     const user = new User({ fullName, email, password, role });
-//     await user.save();
-
-//     const token = generateToken(user);
-//     res.status(201).json({ token, user });
-//   } catch (err) {
-//     console.error('Error creating user:', err);
-//     res.status(500).json({ message: 'Server error', error: err.message });
-//   }
-// };
 const User = require('../models/User');
 const Student = require('../models/Students');
 const Alumni = require('../models/Alumni');
 const Admin = require('../models/Admins');  // your Admin model
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-
+const sendEmail = require("../utils/sendEmail");
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role, fullName: user.fullName, email: user.email },
@@ -69,10 +24,47 @@ exports.createUser = async (req, res) => {
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'User already exists' });
 
-    // Create base user
-    const user = new User({ fullName, email, password, role });
-    await user.save();
 
+    // ✅ Enforce email domain for Students
+    const allowedDomains = ["@vit.edu", "@viit.ac.in"];
+    const isStudentEmail = allowedDomains.some(domain => email.endsWith(domain));
+    if (role === "Student" && !isStudentEmail) {
+      return res.status(400).json({ message: "Only VIT/VIIT students can register with a valid email." });
+    }
+
+   
+    // Create base user
+  const user = new User({ fullName, email, password, role });
+  if (req.body.role === "Student"|| req.body.role === "Alumni") {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const emailSubject = "VIITAA Email Verification Code";
+    const emailText = `Your VIITAA verification code is: ${code}`;
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; border: 1px solid #eee; border-radius: 8px; padding: 24px;">
+        <h2 style="color: #4f46e5; text-align: center;">Welcome to VIITAA!</h2>
+        <p>Dear ${user.fullName},</p>
+        <p>Thank you for registering on the VIITAA (VIT/VIIT Alumni & Student Network) platform.</p>
+        <p style="font-size: 1.1em;">To verify your email and activate your account, please enter the following code in the app:</p>
+        <div style="font-size: 2em; font-weight: bold; letter-spacing: 4px; color: #4f46e5; text-align: center; margin: 24px 0;">${code}</div>
+        <ul>
+          <li>This code is valid for 10 minutes.</li>
+          <li>If you did not request this, please ignore this email.</li>
+        </ul>
+        <p style="margin-top: 32px;">Best regards,<br/>VIITAA Team</p>
+        <hr/>
+        <p style="font-size: 0.9em; color: #888;">For support, contact your college admin or reply to this email.</p>
+      </div>
+    `;
+
+      user.verificationCode = code;
+      user.verificationCodeExpires = Date.now() + 10 * 60 * 1000; // 10 min
+      user.verified = false;
+      await sendEmail(user.email, emailSubject, emailText, emailHtml);
+  } else {
+      user.verified = true; // Admins are auto-verified
+  }
+    await user.save();
+   
     // Auto-create role profile
     if (role === 'Student') {
       const studentProfile = new Student({
@@ -82,7 +74,9 @@ exports.createUser = async (req, res) => {
         interests: [],
         skills: [],
         industryInterestOrField: [],
-        careerGoal: ''
+        careerGoal: '',
+        branch: '',
+        grNo: ''
       });
       await studentProfile.save();
     } else if (role === 'Alumni') {
@@ -125,7 +119,12 @@ exports.loginUser = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
-
+    if (user.role === "Student" && !user.verified) {
+     return res.status(401).json({ message: "Please verify your email before logging in." });
+    }
+    if (user.role === "Alumni" && !user.verified) {
+     return res.status(401).json({ message: "Please verify your email before logging in." });
+    }
     const token = generateToken(user);
     res.json({ token, user });
   } catch (err) {
@@ -216,4 +215,21 @@ exports.deleteUser = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
+};
+
+exports.verifyCode = async (req, res) => {
+  const { email, code } = req.body;
+  const user = await User.findOne({ email });
+  if (!user || user.verified) return res.status(400).json({ message: "Invalid request." });
+  if (
+    user.verificationCode !== code ||
+    user.verificationCodeExpires < Date.now()
+  ) {
+    return res.status(400).json({ message: "Invalid or expired code." });
+  }
+  user.verified = true;
+  user.verificationCode = undefined;
+  user.verificationCodeExpires = undefined;
+  await user.save();
+  res.json({ message: "Email verified successfully!" });
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { User, Users, Calendar, BookOpen, MessageCircle, Bot, X, ArrowRight, Home, Bell, Award, Zap, Star, Briefcase, Menu, X as CloseIcon, LogOut, UserPlus } from "lucide-react";
+import { User, Users, Calendar, BookOpen, MessageCircle, Bot, X, ArrowRight, Home, Bell, Award, Zap, Star, Briefcase, Menu, LogOut, UserPlus } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../auth/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
@@ -23,7 +23,8 @@ import NotificationDropdown from "../../components/NotificationDropdown";
 import StudentSidebar from "./StudentSidebar";
 import StudentTopbar from "./StudentTopbar";
 import ChatWindow from "../../components/ChatWindow";
-// --- DashboardView Component (No changes to logic, just cleaned up) ---
+
+// --- DashboardView Component ---
 const DashboardView = ({ setActiveTab }) => {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -46,26 +47,26 @@ const DashboardView = ({ setActiveTab }) => {
                 ]);
                 setStats(statsRes.data);
                 setMatches(matchesRes.data);
-                setRequestedMentors(new Set(requestsRes.data.map(req => req.mentor._id)));
+                setRequestedMentors(new Set(requestsRes.data.map(req => req.mentor?._id)));
             } catch (error) {
                 console.error("Failed to load dashboard data", error);
+                toast({ variant: "destructive", title: "Error", description: "Could not load dashboard data." });
             } finally {
                 setLoading(false);
             }
         };
         fetchData();
-    }, []);
+    }, [toast]);
 
     const calculateProfileCompletion = (profile) => {
         if (!profile) return 0;
         let score = 0;
-        const totalFields = 5;
-        if (profile.bio) score++;
-        if (profile.skills?.length > 0) score++;
-        if (profile.interests?.length > 0) score++;
-        if (profile.careerGoal) score++;
-        if (profile.industryInterestOrField?.length > 0) score++;
-        return Math.round((score / totalFields) * 100);
+        if (profile.bio && profile.bio.trim() !== '') score += 20;
+        if (profile.careerGoal && profile.careerGoal.trim() !== '') score += 20;
+        if (profile.skills?.length > 0) score += 20;
+        if (profile.interests?.length > 0) score += 20;
+        if (profile.industryInterestOrField?.length > 0) score += 20;
+        return score;
     };
 
     const handleConnectClick = (alumni) => {
@@ -74,11 +75,15 @@ const DashboardView = ({ setActiveTab }) => {
 
     const handleSendRequest = async () => {
         if (!selectedMentor) return;
+        if (!goals.trim()) {
+            toast({ variant: "destructive", title: "Goals Required", description: "Please describe your goals for the mentorship." });
+            return;
+        }
         setIsRequesting(true);
         try {
             await api.post("/mentorships/request", {
                 mentorId: selectedMentor.userId._id,
-                goals,
+                studentGoals: goals, // Changed from `goals` to `studentGoals` to match backend schema
             });
             toast({
                 title: "Request Sent!",
@@ -143,10 +148,12 @@ const DashboardView = ({ setActiveTab }) => {
                             <div key={alumni._id} className="p-4 border border-gray-200 rounded-xl flex items-center justify-between transition-colors duration-200 hover:bg-gray-50">
                                 <div className="flex items-center space-x-4">
                                     <Avatar className="h-14 w-14">
-                                        <AvatarFallback className="bg-blue-200 text-blue-700 text-xl font-medium">{alumni.userId.fullName.charAt(0)}</AvatarFallback>
+                                        <AvatarFallback className="bg-blue-200 text-blue-700 text-xl font-medium">
+                                            {alumni.userId?.fullName?.charAt(0) || 'A'}
+                                        </AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <h4 className="font-semibold text-gray-900">{alumni.userId.fullName}</h4>
+                                        <h4 className="font-semibold text-gray-900">{alumni.userId?.fullName || 'Alumni Member'}</h4>
                                         <p className="text-sm text-gray-600">{alumni.currentJob}</p>
                                     </div>
                                 </div>
@@ -158,10 +165,10 @@ const DashboardView = ({ setActiveTab }) => {
                                     <Button
                                         size="sm"
                                         onClick={() => handleConnectClick(alumni)}
-                                        disabled={requestedMentors.has(alumni.userId._id)}
+                                        disabled={requestedMentors.has(alumni.userId?._id)}
                                         className="h-8"
                                     >
-                                        {requestedMentors.has(alumni.userId._id) ? "Requested" : "Connect"}
+                                        {requestedMentors.has(alumni.userId?._id) ? "Requested" : "Connect"}
                                         <UserPlus className="h-4 w-4 ml-1" />
                                     </Button>
                                 </div>
@@ -169,12 +176,11 @@ const DashboardView = ({ setActiveTab }) => {
                         ))}
                 </CardContent>
             </Card>
-            {/* Connection Request Dialog */}
             <Dialog open={!!selectedMentor} onOpenChange={(open) => !open && setSelectedMentor(null)}>
                 {selectedMentor && (
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Request Mentorship from {selectedMentor.userId.fullName}</DialogTitle>
+                            <DialogTitle>Request Mentorship from {selectedMentor.userId?.fullName}</DialogTitle>
                         </DialogHeader>
                         <div className="py-4 space-y-4">
                             <p className="text-sm text-gray-600">Briefly describe what you hope to achieve from this mentorship.</p>
@@ -192,21 +198,11 @@ const DashboardView = ({ setActiveTab }) => {
 
 // --- Main StudentDashboard Component ---
 export default function StudentDashboard() {
-    const { user, logout, notifications, clearNotifications } = useAuth();
+    const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState("dashboard");
     const [showChatbot, setShowChatbot] = useState(false);
     const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [chatReceiver, setChatReceiver] = useState(null);
-
-    const navItems = [
-        { name: "Dashboard", tab: "dashboard", icon: <Home className="h-5 w-5" /> },
-        { name: "Alumni", tab: "alumni", icon: <Users className="h-5 w-5" /> },
-        { name: "Mentorship", tab: "mentorship", icon: <Award className="h-5 w-5" /> },
-        { name: "Events", tab: "events", icon: <Calendar className="h-5 w-5" /> },
-        { name: "Resources", tab: "resources", icon: <BookOpen className="h-5 w-5" /> },
-        { name: "Community", tab: "community", icon: <MessageCircle className="h-5 w-5" /> },
-        { name: "Jobs", tab: "jobs", icon: <Briefcase className="h-5 w-5" /> },
-    ];
 
     const renderContent = () => {
         switch (activeTab) {
@@ -223,43 +219,39 @@ export default function StudentDashboard() {
     };
 
     const handleNotificationClick = (sender) => {
-        // This function will be passed down to open the chat window
         setChatReceiver(sender);
     };
 
-
     return (
         <div className="flex min-h-screen bg-gray-100">
-        <StudentSidebar 
-            isCollapsed={isSidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(!isSidebarCollapsed)}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            logout={logout}
-            
-        />
-        <div className="flex-1 flex flex-col">
-            <StudentTopbar 
-            onToggleChatbot={() => setShowChatbot(!showChatbot)}
-            setActiveTab={setActiveTab}
-            onNotificationClick={handleNotificationClick}
+            <StudentSidebar
+                isCollapsed={isSidebarCollapsed}
+                onToggle={() => setSidebarCollapsed(!isSidebarCollapsed)}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                logout={logout}
             />
-            <main className="flex-1 p-8 overflow-y-auto">
-            {renderContent()}
-            </main>
-        </div>
-
-        {chatReceiver && <ChatWindow receiver={chatReceiver} onClose={() => setChatReceiver(null)} />}
-        {showChatbot && (
-            <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border z-50">
-                <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl">
-                    <div className="flex items-center space-x-2"><Bot className="h-5 w-5 text-white" /><span className="text-white font-medium">AI Assistant</span></div>
-                    <Button variant="ghost" size="sm" onClick={() => setShowChatbot(false)} className="text-white hover:bg-white/20 h-6 w-6 p-0"><X className="h-4 w-4" /></Button>
-                </div>
-                <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
-                <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
+            <div className="flex-1 flex flex-col">
+                <StudentTopbar
+                    onToggleChatbot={() => setShowChatbot(!showChatbot)}
+                    setActiveTab={setActiveTab}
+                    onNotificationClick={handleNotificationClick}
+                />
+                <main className="flex-1 p-8 overflow-y-auto">
+                    {renderContent()}
+                </main>
             </div>
-        )}
+            {chatReceiver && <ChatWindow receiver={chatReceiver} onClose={() => setChatReceiver(null)} />}
+            {showChatbot && (
+                <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-xl shadow-2xl border z-50">
+                    <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-xl">
+                        <div className="flex items-center space-x-2"><Bot className="h-5 w-5 text-white" /><span className="text-white font-medium">AI Assistant</span></div>
+                        <Button variant="ghost" size="sm" onClick={() => setShowChatbot(false)} className="text-white hover:bg-white/20 h-6 w-6 p-0"><X className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="p-4 h-64 overflow-y-auto"><div className="space-y-3"><div className="bg-gray-100 rounded-lg p-3"><p className="text-sm text-gray-700">Hi {user?.fullName?.split(" ")[0]}! I'm here to help.</p></div></div></div>
+                    <div className="p-4 border-t"><div className="flex space-x-2"><Input placeholder="Ask me anything..." className="text-sm" /><Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600"><ArrowRight className="h-4 w-4" /></Button></div></div>
+                </div>
+            )}
         </div>
     );
 }

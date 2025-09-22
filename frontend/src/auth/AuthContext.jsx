@@ -63,10 +63,10 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setError("");
       await api.post("/users/register", payload);
-      navigate("/login");
+      return true;
     } catch (e) {
       setError(e?.response?.data?.message || "Registration failed");
-      throw e;
+      return false;
     } finally {
       setLoading(false);
     }

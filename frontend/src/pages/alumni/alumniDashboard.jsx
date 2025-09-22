@@ -16,7 +16,7 @@ import AlumniProfile from "./AlumniProfile";
 import ProfileMenu from "./ProfileMenu";
 import api from "../../api/axios";
 import ChatWindow from "../../components/ChatWindow";
-import { useToast } from "../../components/ui/use-toast";
+import { toast, useToast } from "../../components/ui/use-toast";
 import { Briefcase } from "lucide-react";
 // import StudentCommunity from "./StudentCommunity";
 import AlumniSidebar from "./AlumniSidebar";
@@ -25,6 +25,7 @@ import {X as CloseIcon }from "lucide-react";
 import { Trash2 } from "lucide-react";
 import CommunityForum from "../../components/CommunityForum";
 
+import { AlertCircle } from "lucide-react"; // Import an icon for the reason
 
 const DashboardView = () => {
     const [stats, setStats] = useState(null);
@@ -46,14 +47,51 @@ const DashboardView = () => {
     }, []);
 
     const calculateProfileCompletion = (profile) => {
-        if (!profile) return 0;
-        let score = 20; // Base score for existing
-        const totalFields = 4;
-        if (profile.skills?.length > 0) score += 20;
-        if (profile.bio) score += 20;
-        if (profile.currentJob) score += 20;
-        if (profile.mentorshipAvailability === true) score += 20;
-        return score > 100 ? 100 : score;
+      if (!profile) return 0;
+
+      const completionCriteria = [
+        {
+         
+          key: 'Bio', 
+          weight: 20,
+          isValid: (val) => val && val.trim() !== '',
+        },
+        {
+          key: 'skills',
+          weight: 20,
+          isValid: (val) => Array.isArray(val) && val.length > 0,
+        },
+        {
+          key: 'currentJob',
+          weight: 20,
+          isValid: (val) => val && val.trim() !== '',
+        },
+        {
+          key: 'mentorshipAvailability',
+          weight: 20,
+          // This fix handles both true booleans and the strings "true" or "false"
+          isValid: (val) => val === true || val === false,
+        },
+        {
+          key: 'educationHistory',
+          weight: 20,
+          isValid: (val) => Array.isArray(val) && val.length > 0,
+        },
+      ];
+
+      let completedScore = 0;
+      const totalPossibleScore = 100;
+
+      for (const criterion of completionCriteria) {
+        const profileValue = profile[criterion.key];
+        if (criterion.isValid(profileValue)) {
+          completedScore += criterion.weight;
+        }
+      }
+      
+      const percentage = (completedScore / totalPossibleScore) * 100;
+      
+      return Math.round(percentage);
     };
 
     const profileCompletion = calculateProfileCompletion(stats?.alumniProfile);
@@ -110,9 +148,11 @@ const MentorshipRequests = () => {
     try {
       await api.put(`/mentorships/respond/${requestId}`, { status });
       setRequests(requests.filter((req) => req._id !== requestId));
-      alert(`Request has been ${status}.`);
+      toast({ title: `Request ${status}`, description: `You have ${status.toLowerCase()} the mentorship request.` });
+      
     } catch (error) {
-      alert("Failed to respond to request.");
+      toast({ variant: "destructive", title: "Error", description: "Failed to respond to request." });
+     
     }
   };
 
@@ -132,10 +172,10 @@ const MentorshipRequests = () => {
               <li key={req._id} className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-start space-x-4">
                   <Avatar>
-                    <AvatarFallback>{req.student.fullName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{req.student?.fullName.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="font-semibold">{req.student.fullName}</p>
+                    <p className="font-semibold">{req.student?.fullName}</p>
                     <p className="text-sm text-gray-500 mb-2">Requested on: {new Date(req.requestedAt).toLocaleDateString()}</p>
                     <p className="text-sm bg-white p-3 rounded-md border">"{req.studentGoals}"</p>
                   </div>
@@ -189,10 +229,10 @@ const MyMentees = ({ onStartChat }) => {
               <li key={mentorship._id} className="p-4 bg-gray-50 rounded-lg flex justify-between items-center">
                 <div className="flex items-center space-x-4">
                   <Avatar>
-                    <AvatarFallback>{mentorship.student.fullName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{mentorship.student?.fullName.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-semibold">{mentorship.student.fullName}</p>
+                    <p className="font-semibold">{mentorship.student?.fullName}</p>
                     <p className="text-sm text-gray-500">Accepted on: {new Date(mentorship.acceptedAt).toLocaleDateString()}</p>
                   </div>
                 </div>
@@ -340,6 +380,8 @@ const MyHostedEvents = ({ keyProp }) => {
                                       {getStatusBadge(event.status)}
                                     </div>
                                     <p className="text-sm text-gray-500">{new Date(event.date).toLocaleDateString()}</p>
+                                    <p className="text-sm text-gray-700 mt-2">{event.description}</p>
+                                    <p className="text-sm text-gray-500 mt-1 italic">Type: {event.type} | Mode: {event.mode}</p>
                                 </div>
                                 {/* ✅ NEW: "Join Now" button for approved online events */}
                                 {event.status === 'Approved' && event.mode === 'Online' && (
@@ -349,6 +391,18 @@ const MyHostedEvents = ({ keyProp }) => {
                                             Join Now
                                         </Button>
                                     </a>
+                                )}
+                                {event.status === 'Approved' && event.mode === 'Offline' && (
+                                    <a href={event.meetingLink} target="_blank" rel="noopener noreferrer">
+                                        <p className="text-sm text-gray-500 italic">Location: {event.location}</p>
+                                    </a>
+                                )}
+                                {/* ✅ THE FIX: Display the rejection reason if it exists */}
+                                {event.status === 'Rejected' && event.rejectionReason && (
+                                    <div className="mt-3 p-3 bg-red-50/50 border-l-4 border-red-400 text-red-800 text-sm">
+                                        <p className="font-semibold flex items-center"><AlertCircle className="h-4 w-4 mr-2"/>Admin's Reason:</p>
+                                        <p className="pl-6 italic">"{event.rejectionReason}"</p>
+                                    </div>
                                 )}
                             </li>
                         ))}
@@ -448,6 +502,7 @@ const MyJobPosts = ({ keyProp, onJobDeleted }) => {
                   <div>
                     <p className="font-semibold">{job.title} @ {job.company}</p>
                     <p className="text-sm text-gray-500">{job.location} · {job.type}</p>
+                    <p className="text-sm text-gray-500">{job.description}</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <a href={job.applyLink} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline">View</Button></a>

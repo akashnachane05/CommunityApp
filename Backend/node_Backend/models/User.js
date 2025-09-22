@@ -9,7 +9,10 @@ const userSchema = new mongoose.Schema({
   violations: [{
     content: String,
     timestamp: { type: Date, default: Date.now }
-  }]
+  }],
+  verificationCode: { type: String },
+  verificationCodeExpires: { type: Date },
+  verified: { type: Boolean, default: false },
 });
 
 userSchema.pre('save', async function (next) {

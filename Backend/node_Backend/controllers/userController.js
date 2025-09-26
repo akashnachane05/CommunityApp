@@ -35,7 +35,7 @@ exports.createUser = async (req, res) => {
    
     // Create base user
   const user = new User({ fullName, email, password, role });
-  if (req.body.role === "Student"|| req.body.role === "Alumni") {
+  if (req.body.role === "Student"|| req.body.role === "Alumni"||req.body.role === "Admin") {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const emailSubject = "VIITAA Email Verification Code";
     const emailText = `Your VIITAA verification code is: ${code}`;
@@ -60,9 +60,7 @@ exports.createUser = async (req, res) => {
       user.verificationCodeExpires = Date.now() + 10 * 60 * 1000; // 10 min
       user.verified = false;
       await sendEmail(user.email, emailSubject, emailText, emailHtml);
-  } else {
-      user.verified = true; // Admins are auto-verified
-  }
+  } 
     await user.save();
    
     // Auto-create role profile
@@ -76,7 +74,7 @@ exports.createUser = async (req, res) => {
         industryInterestOrField: [],
         careerGoal: '',
         branch: '',
-        grNo: ''
+        // grNo: ''
       });
       await studentProfile.save();
     } else if (role === 'Alumni') {

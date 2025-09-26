@@ -7,9 +7,10 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Separator } from "../components/ui/separator"
 import { Alert, AlertDescription } from "../components/ui/alert"
-import { Mail, Lock, User, Shield, ArrowLeft } from "lucide-react"
+import { Mail, Lock, User, Shield, ArrowLeft, CheckCircle, KeyRound } from "lucide-react"
 import api from "../api/axios"; 
 import { useToast } from "../components/ui/use-toast"
+
 export default function Register() {
   const { register, loading, error } = useAuth()
   const { toast } = useToast()
@@ -28,6 +29,9 @@ export default function Register() {
   const [code, setCode] = useState("");
   const [registerError, setRegisterError] = useState("");
 
+  // Stepper logic: always show for all roles
+  const step = showVerify ? 2 : 1;
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setRegisterError(""); 
@@ -42,7 +46,7 @@ export default function Register() {
     const payload = { ...form };
     if (payload.role !== "Admin") delete payload.secretCode;
     const success = await register(payload);
-    if (success && (form.role === "Student" || form.role === "Alumni")) {
+    if (success && (form.role === "Student" || form.role === "Alumni"||form.role==="Admin")) {
       setShowVerify(true); // Show code entry form
     } else if (success) {
       navigate("/dashboard");
@@ -62,6 +66,51 @@ export default function Register() {
       );
     }
   };
+
+  // Dynamic instructions for all roles
+  let instructions = null;
+  if (form.role === "Admin") {
+    instructions = (
+      <div className="mb-4 text-sm bg-purple-50 border border-purple-200 rounded p-3 flex items-start gap-2">
+        <KeyRound className="w-5 h-5 text-purple-500 mt-1" />
+        <span>
+          <b>Admin registration is a two-step process:</b>
+          <ol className="list-decimal ml-5 mt-1">
+            <li>Fill the form, including the <b>secret code</b> provided by your college.</li>
+            <li>Enter the <b>6-digit code</b> sent to your email to verify your account.</li>
+          </ol>
+        </span>
+      </div>
+    );
+  } else {
+    instructions = (
+      <div className="mb-4 text-sm bg-blue-50 border border-blue-200 rounded p-3 flex items-start gap-2">
+        <CheckCircle className="w-5 h-5 text-blue-500 mt-1" />
+        <span>
+          <b>Registration is a two-step process:</b>
+          <ol className="list-decimal ml-5 mt-1">
+            <li>Fill the form and submit.</li>
+            <li>Enter the <b>6-digit code</b> sent to your email to verify your account.</li>
+          </ol>
+        </span>
+      </div>
+    );
+  }
+
+  // Stepper UI: always show
+  const Stepper = () => (
+    <div className="flex items-center justify-center mb-6">
+      <div className={`flex items-center ${step === 1 ? "font-bold text-blue-700" : "text-gray-400"}`}>
+        <span className="rounded-full border-2 border-blue-600 w-6 h-6 flex items-center justify-center mr-2">{step === 1 ? 1 : <CheckCircle className="w-4 h-4 text-green-500" />}</span>
+        <span>Register</span>
+      </div>
+      <div className="mx-2 h-1 w-8 bg-gray-300 rounded" />
+      <div className={`flex items-center ${step === 2 ? "font-bold text-blue-700" : "text-gray-400"}`}>
+        <span className="rounded-full border-2 border-blue-600 w-6 h-6 flex items-center justify-center mr-2">{step === 2 ? 2 : ""}</span>
+        <span>Verify Email</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex justify-center items-center p-6">
@@ -87,6 +136,9 @@ export default function Register() {
           </CardHeader>
 
           <CardContent className="space-y-6">
+            <Stepper />
+            {instructions}
+
             {/* Error alert */}
             {error && (
               <Alert className="border-red-200 bg-red-50">
@@ -96,20 +148,26 @@ export default function Register() {
 
             {/* Registration form */}
             {showVerify ? (
-              <form onSubmit={handleVerify}>
+              <form onSubmit={handleVerify} className="space-y-4">
                 <Label>Enter the 6-digit code sent to your email</Label>
                 <Input value={code} onChange={e => setCode(e.target.value)} required />
-                <Button type="submit">Verify Email</Button>
+                {/* <Button type="submit" className="w-full">Verify Email</Button> */}
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  disabled={loading}
+                >
+                  {loading ? "verifying..." : "Verify Email"}
+                </Button>
                 {verifyError && <Alert>{verifyError}</Alert>}
               </form>
             ) : (
               <form onSubmit={onSubmit} className="space-y-4">
-                 {/* ADD THIS BLOCK */}
-                  {registerError && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{registerError}</AlertDescription>
-                    </Alert>
-                  )}
+                {registerError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{registerError}</AlertDescription>
+                  </Alert>
+                )}
                 {/* Full Name */}
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>

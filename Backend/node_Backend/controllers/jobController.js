@@ -46,16 +46,20 @@ exports.createJob = async (req, res) => {
       postedBy: req.user.id
     });
     const job = await newJob.save();
-
+     
     // Fetch all verified students
     const students = await User.find({ role: 'Student', verified: true }).select('fullName email');
-
-    // Send email to all students
-    const emailPromises = students.map(student => sendJobEmail(student, job));
-    await Promise.all(emailPromises);
-
-
     res.status(201).json({ message: 'Job posted and notifications sent.', job });
+    // Send email to all students
+    process.nextTick(async () => {
+        try {
+            await Promise.all(
+            students.map(student => sendJobEmail(student, job))
+            );
+        } catch (err) {
+            console.error("❌ Error sending job emails:", err);
+        }
+    });
 
   } catch (err) {
     console.error('Error creating job:', err);

@@ -1,7 +1,8 @@
 const Event = require('../models/Event');
 const User = require('../models/User');
 const Student = require('../models/Students');
-
+const { recordActivity } = require('../utils/activityLogger');
+const { sendEventApprovalEmail, sendEventRejectionEmail,sendEventApprovalAlumniEmail,sendEventRegistrationEmail } = require('../utils/eventMailer');
 // FOR STUDENTS: Get all APPROVED events
 exports.getAllEvents = async (req, res) => {
   try {
@@ -64,6 +65,15 @@ exports.registerForEvent = async (req, res) => {
       });
     }
 
+     // Send registration confirmation email asynchronously
+    process.nextTick(async () => {
+      try {
+        await sendEventRegistrationEmail(userDoc, updatedEvent);
+      } catch (err) {
+        console.error("Error sending registration email:", err);
+      }
+    });
+
     res.status(200).json(updatedEvent);
   } catch (error) {
     console.error("Event registration error:", error);
@@ -96,22 +106,63 @@ exports.getPendingEvents = async (req, res) => {
 };
 
 // FOR ADMINS: Approve or reject an event
-exports.updateEventStatus = async (req, res) => {
-    try {
-        const { status, rejectionReason } = req.body; // Get reason from request body
+// exports.updateEventStatus = async (req, res) => {
+//     try {
+//         const { status, rejectionReason } = req.body; // Get reason from request body
         
-        const updateData = { status };
-        if (status === 'Rejected' && rejectionReason) {
-            updateData.rejectionReason = rejectionReason;
+//         const updateData = { status };
+//         if (status === 'Rejected' && rejectionReason) {
+//             updateData.rejectionReason = rejectionReason;
+//         }
+
+//         const event = await Event.findByIdAndUpdate(req.params.id, updateData, { new: true });
+//         if (!event) return res.status(404).json({ message: 'Event not found' });
+        
+//         res.status(200).json(event);
+//     } catch (error) {
+//         res.status(500).json({ message: 'Server Error' });
+//     }
+// };
+exports.updateEventStatus = async (req, res) => {
+  try {
+    const { id} = req.params;
+    const { status, rejectionReason } = req.body;
+
+    const event = await Event.findById(id).populate("hostedBy", "fullName email");
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    event.status = status;
+    if (status === "Rejected") {
+      event.rejectionReason = rejectionReason;
+    }
+    await event.save();
+    
+    res.json({ message: `Event ${status.toLowerCase()} successfully` });
+
+    process.nextTick(async () => {
+      try {
+        if (status === "Approved") {
+          const students = await User.find({ role: "Student", verified: true }).select("fullName email");
+          await Promise.all(
+            students.map((student) => sendEventApprovalEmail(student, event))
+          );
+
+          await sendEventApprovalAlumniEmail(event.hostedBy, event);
         }
 
-        const event = await Event.findByIdAndUpdate(req.params.id, updateData, { new: true });
-        if (!event) return res.status(404).json({ message: 'Event not found' });
-        
-        res.status(200).json(event);
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
-    }
+        if (status === "Rejected" && rejectionReason) {
+          await sendEventRejectionEmail(event.hostedBy, event, rejectionReason);
+        }
+      } catch (emailError) {
+        console.error("Error sending event notification emails:", emailError);
+      }
+    });
+    
+
+  } catch (error) {
+    console.error("Error updating event status:", error);
+    res.status(500).json({ message: "Error updating event status" });
+  }
 };
 
 // FOR ADMINS - Get ALL events (including pending/rejected)

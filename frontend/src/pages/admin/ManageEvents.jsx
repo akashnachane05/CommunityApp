@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,DialogD
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Users, Calendar, MessageSquare, Trash2, Flag, PlusCircle, Check, X, Clock,Briefcase,Bot,ArrowRight,FileText } from "lucide-react";
 import { useToast } from "../../components/ui/use-toast";
-
+import * as XLSX from "xlsx";
 const ManageEvents = () => {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -91,6 +91,27 @@ const ManageEvents = () => {
             case 'Rejected': return <Badge className="bg-red-100 text-red-700">Rejected</Badge>;
             default: return <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">Pending</Badge>;
         }
+    };
+
+    const downloadAttendees = () => {
+        if (!selectedEvent || !selectedEvent.attendees.length) return;
+
+        // Convert attendees to a worksheet
+        const worksheet = XLSX.utils.json_to_sheet(
+            selectedEvent.attendees.map(a => ({
+            Name: a.fullName,
+            Branch: a.branch,
+            "GR No": a.grNo,
+            Email: a.email || "N/A",
+            }))
+        );
+
+        // Create a new workbook and append the sheet
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Attendees");
+
+        // Export as Excel file
+        XLSX.writeFile(workbook, `${selectedEvent.title}-attendees.xlsx`);
     };
     
     return (
@@ -227,32 +248,42 @@ const ManageEvents = () => {
         {/* ✅ NEW: Dialog to display event attendees */}
         {/* ✅ Attendees Dialog */}
         <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <DialogContent>
-            <DialogHeader>
-            <DialogTitle>Attendees for "{selectedEvent?.title}"</DialogTitle>
-            <DialogDescription>Total Registered: {selectedEvent?.attendees.length || 0}</DialogDescription>
-            </DialogHeader>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Attendees for "{selectedEvent?.title}"</DialogTitle>
+                    <DialogDescription>
+                    Total Registered: {selectedEvent?.attendees.length || 0}
+                    </DialogDescription>
+                </DialogHeader>
 
-            <div className="py-4 max-h-[60vh] overflow-y-auto">
-            {selectedEvent?.attendees.length > 0 ? (
-                <ul className="space-y-2">
-                {selectedEvent.attendees.map((attendee, index) => (
-                    <li
-                    key={`${attendee.studentId}-${index}`} // ✅ unique key
-                    className="text-sm p-2 bg-gray-100 rounded"
-                    >
-                    <p className="font-medium">{attendee.fullName}</p>
-                    <p className="text-xs text-gray-500">
-                        {attendee.branch} | GR No: {attendee.grNo} | Email: {attendee.email || "N/A"}
-                    </p>
-                    </li>
-                ))}
-                </ul>
-            ) : (
-                <p className="text-sm text-gray-500">No students have registered for this event yet.</p>
-            )}
-            </div>
-        </DialogContent>
+                {/* ✅ Download button */}
+                {selectedEvent?.attendees?.length > 0 && (
+                    <Button onClick={downloadAttendees} className="mb-4">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Download Spreadsheet
+                    </Button>
+                )}
+
+                <div className="py-4 max-h-[60vh] overflow-y-auto">
+                    {selectedEvent?.attendees.length > 0 ? (
+                    <ul className="space-y-2">
+                        {selectedEvent.attendees.map((attendee, index) => (
+                        <li
+                            key={`${attendee.studentId}-${index}`}
+                            className="text-sm p-2 bg-gray-100 rounded"
+                        >
+                            <p className="font-medium">{attendee.fullName}</p>
+                            <p className="text-xs text-gray-500">
+                            {attendee.branch} | GR No: {attendee.grNo} | Email: {attendee.email || "N/A"}
+                            </p>
+                        </li>
+                        ))}
+                    </ul>
+                    ) : (
+                    <p className="text-sm text-gray-500">No students have registered for this event yet.</p>
+                    )}
+                </div>
+            </DialogContent>
         </Dialog>
 
         </>

@@ -137,7 +137,7 @@ export default function Register() {
 
           <CardContent className="space-y-6">
             <Stepper />
-            {instructions}
+            {/* {instructions} */}
 
             {/* Error alert */}
             {error && (

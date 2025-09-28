@@ -1,4 +1,6 @@
 const Job = require('../models/Job');
+const User = require('../models/User');
+const { sendJobEmail } = require('../utils/jobEmail');
 
 // FOR STUDENTS: Get all jobs
 exports.getAllJobs = async (req, res) => {
@@ -24,22 +26,41 @@ exports.getMyJobs = async (req, res) => {
 
 // FOR ALUMNI: Create a new job
 exports.createJob = async (req, res) => {
-    try {
-        const { title, company, location, description, applyLink, type } = req.body;
-        const newJob = new Job({
-            title,
-            company,
-            location,
-            description,
-            applyLink,
-            type,
-            postedBy: req.user.id
-        });
-        const job = await newJob.save();
-        res.status(201).json(job);
-    } catch (err) {
-        res.status(500).json({ message: 'Server Error', error: err.message });
+  try {
+    const { title, company, location, description, applyLink, type } = req.body;
+
+    // ❌ Check for duplicate job by same alumni
+    const existingJob = await Job.findOne({ title, company, postedBy: req.user.id });
+    if (existingJob) {
+      return res.status(400).json({ message: "You have already posted this job." });
     }
+
+    // Save job
+    const newJob = new Job({
+      title,
+      company,
+      location,
+      description,
+      applyLink,
+      type,
+      postedBy: req.user.id
+    });
+    const job = await newJob.save();
+
+    // Fetch all verified students
+    const students = await User.find({ role: 'Student', verified: true }).select('fullName email');
+
+    // Send email to all students
+    const emailPromises = students.map(student => sendJobEmail(student, job));
+    await Promise.all(emailPromises);
+
+
+    res.status(201).json({ message: 'Job posted and notifications sent.', job });
+
+  } catch (err) {
+    console.error('Error creating job:', err);
+    res.status(500).json({ message: 'Server Error', error: err.message });
+  }
 };
 
 // FOR ALUMNI/ADMINS: Delete a job

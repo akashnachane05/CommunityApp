@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
 
 async function sendEmail(to, subject, text, html) {
   const mailOptions = {
-    from: `"VIITAA Platform" <${process.env.EMAIL_USER}>`,
+    from: `"VITAA Platform" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     text,

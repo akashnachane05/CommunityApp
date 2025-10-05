@@ -23,6 +23,25 @@ import { Alert, AlertDescription } from "../../components/ui/alert";
 import { useAuth } from "../../auth/AuthContext";
 import api from "../../api/axios";
 import { useToast } from "../../components/ui/use-toast";
+import Select from 'react-select';
+
+const degreeOptions = [
+  "B.Tech", "B.E.", "M.Tech", "M.E.", "Diploma", "PhD"
+];
+const institutionOptions = [
+  "VIT", "VIIT"
+];
+const skillOptions = [
+  { value: "React", label: "React" },
+  { value: "Python", label: "Python" },
+  { value: "Java", label: "Java" },
+  { value: "C++", label: "C++" },
+  { value: "Machine Learning", label: "Machine Learning" },
+  { value: "UI/UX", label: "UI/UX" },
+  { value: "Node.js", label: "Node.js" },
+  { value: "SQL", label: "SQL" }
+];
+
 export default function AlumniProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -280,18 +299,25 @@ export default function AlumniProfile() {
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-lg font-medium">Skills</label>
-                <Input
-                  value={form.skills}
-                  onChange={(e) => setForm((f) => ({ ...f, skills: e.target.value }))}
-                  placeholder="React, Python..."
+                <Select
+                  isMulti
+                  options={skillOptions}
+                  value={skillOptions.filter(opt => form.skills.split(',').map(s => s.trim()).includes(opt.value))}
+                  onChange={(selected) => setForm((f) => ({
+                    ...f,
+                    skills: selected.map(opt => opt.value).join(', ')
+                  }))}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  placeholder="Select skills..."
                 />
               </div>
               <div className="space-y-3">
-                <label className="text-lg font-medium">CurrentJob</label>
+                <label className="text-lg font-medium">Current Job</label>
                 <Input
                   value={form.currentJob}
                   onChange={(e) => setForm((f) => ({ ...f, currentJob: e.target.value }))}
-                  placeholder="React, Python..."
+                  placeholder="Your current job..."
                 />
               </div>
               
@@ -312,31 +338,44 @@ export default function AlumniProfile() {
               <label className="text-lg font-medium">Education History</label>
               {form.educationHistory.map((edu, idx) => (
                 <div key={idx} className="border rounded p-3 my-2 space-y-2 relative">
-                  <Input
-                    placeholder="Degree"
+                  {/* Degree Dropdown */}
+                  <select
+                    className="w-full border rounded px-3 py-2"
                     value={edu.degree}
-                    onChange={(e) => {
+                    onChange={e => {
                       const updated = [...form.educationHistory];
                       updated[idx].degree = e.target.value;
                       setForm((f) => ({ ...f, educationHistory: updated }));
                     }}
-                  />
-                  <Input
-                    placeholder="Institution"
+                  >
+                    <option value="">Select Degree</option>
+                    {degreeOptions.map(degree => (
+                      <option key={degree} value={degree}>{degree}</option>
+                    ))}
+                  </select>
+                  {/* Institution Dropdown */}
+                  <select
+                    className="w-full border rounded px-3 py-2"
                     value={edu.institution}
-                    onChange={(e) => {
+                    onChange={e => {
                       const updated = [...form.educationHistory];
                       updated[idx].institution = e.target.value;
                       setForm((f) => ({ ...f, educationHistory: updated }));
                     }}
-                  />
+                  >
+                    <option value="">Select Institution</option>
+                    {institutionOptions.map(inst => (
+                      <option key={inst} value={inst}>{inst}</option>
+                    ))}
+                  </select>
+                  {/* Year of Graduation Input */}
                   <Input
                     type="number"
                     placeholder="Year of Graduation"
                     value={edu.yearOfGraduation || ""}
-                    onChange={(e) => {
+                    onChange={e => {
                       const updated = [...form.educationHistory];
-                      updated[idx].yearOfGraduation = Number(e.target.value);
+                      updated[idx].yearOfGraduation = e.target.value;
                       setForm((f) => ({ ...f, educationHistory: updated }));
                     }}
                   />

@@ -28,6 +28,38 @@ import { Alert, AlertDescription } from "../../components/ui/alert"
 import { useAuth } from "../../auth/AuthContext"
 import api from "../../api/axios"
 import { useToast } from "../../components/ui/use-toast"
+import Select from 'react-select'
+
+const branchOptions = [
+  "Computer Engineering", "IT", "Electronics", "Mechanical", "Civil", "Electrical"
+];
+const skillOptions = [
+  { value: "React", label: "React" },
+  { value: "Python", label: "Python" },
+  { value: "Java", label: "Java" },
+  { value: "C++", label: "C++" },
+  { value: "Machine Learning", label: "Machine Learning" },
+  { value: "UI/UX", label: "UI/UX" },
+  { value: "Node.js", label: "Node.js" },
+  { value: "SQL", label: "SQL" }
+];
+const interestOptions = [
+  { value: "AI", label: "AI" },
+  { value: "Design", label: "Design" },
+  { value: "Robotics", label: "Robotics" },
+  { value: "Finance", label: "Finance" },
+  { value: "Web Development", label: "Web Development" },
+  { value: "Gaming", label: "Gaming" },
+  { value: "Data Science", label: "Data Science" }
+];
+const degreeOptions = [
+  "B.Tech", "B.E.", "M.Tech", "M.E.", "Diploma", "PhD",
+  "High School", "Intermediate"
+];
+const institutionOptions = [
+  "VIT", "VIIT"
+];
+
 export default function StudentProfile() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
@@ -244,7 +276,16 @@ export default function StudentProfile() {
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <label className="font-medium">Branch</label>
-                    <Input value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} placeholder="e.g., Computer Engineering"/>
+                    <select
+                      className="w-full border rounded px-3 py-2"
+                      value={form.branch}
+                      onChange={(e) => setForm({ ...form, branch: e.target.value })}
+                    >
+                      <option value="">Select Branch</option>
+                      {branchOptions.map((branch) => (
+                        <option key={branch} value={branch}>{branch}</option>
+                      ))}
+                    </select>
                 </div>
                 <div className="space-y-2">
                     <label className="font-medium">GR No.</label>
@@ -260,44 +301,76 @@ export default function StudentProfile() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="font-medium">Skills</label>
-                <Input value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} placeholder="Separate with commas: React, Python..."/>
+                <Select
+                  isMulti
+                  options={skillOptions}
+                  value={skillOptions.filter(opt => form.skills.split(',').map(s => s.trim()).includes(opt.value))}
+                  onChange={(selected) => setForm({ ...form, skills: selected.map(opt => opt.value).join(', ') })}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  placeholder="Select skills..."
+                />
               </div>
               <div className="space-y-2">
                 <label className="font-medium">Interests</label>
-                <Input value={form.interests} onChange={(e) => setForm({ ...form, interests: e.target.value })} placeholder="Separate with commas: AI, Design..."/>
+                <Select
+                  isMulti
+                  options={interestOptions}
+                  value={interestOptions.filter(opt => form.interests.split(',').map(s => s.trim()).includes(opt.value))}
+                  onChange={(selected) => setForm({ ...form, interests: selected.map(opt => opt.value).join(', ') })}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  placeholder="Select interests..."
+                />
               </div>
             </div>
 
-            <div>
-              <label className="font-medium block mb-2">Education History</label>
-              {form.educationHistory.map((edu, idx) => (
-                <div key={idx} className="border rounded p-3 my-2 space-y-2 relative bg-white">
-                  <Input placeholder="Degree" value={edu.degree} onChange={(e) => {
-                    const updated = [...form.educationHistory];
-                    updated[idx].degree = e.target.value;
-                    setForm((f) => ({ ...f, educationHistory: updated }));
-                  }}/>
-                  <Input placeholder="Institution" value={edu.institution} onChange={(e) => {
-                    const updated = [...form.educationHistory];
-                    updated[idx].institution = e.target.value;
-                    setForm((f) => ({ ...f, educationHistory: updated }));
-                  }}/>
-                  <Input type="number" placeholder="Year of Graduation" value={edu.yearOfGraduation || ""} onChange={(e) => {
-                    const updated = [...form.educationHistory];
-                    updated[idx].yearOfGraduation = Number(e.target.value);
-                    setForm((f) => ({ ...f, educationHistory: updated }));
-                  }}/>
-                  <Button variant="destructive" size="sm" className="absolute top-2 right-2 h-7 w-7 p-0" onClick={() => {
-                    const updated = form.educationHistory.filter((_, i) => i !== idx);
-                    setForm((f) => ({ ...f, educationHistory: updated }));
-                  }}>
-                    <X className="h-4 w-4"/>
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() =>
-                setForm((f) => ({ ...f, educationHistory: [...f.educationHistory, { degree: "", institution: "", yearOfGraduation: "" }] }))
-              }>+ Add Education</Button>
+            <div className="space-y-2">
+              <label className="font-medium">Education History</label>
+              <div className="grid grid-cols-3 gap-4">
+                {/* Degree Dropdown */}
+                <select
+                  className="w-full border rounded px-3 py-2"
+                  value={form.educationHistory[0]?.degree || ""}
+                  onChange={e => {
+                    const updatedHistory = [...form.educationHistory];
+                    if (!updatedHistory[0]) updatedHistory[0] = {};
+                    updatedHistory[0].degree = e.target.value;
+                    setForm({ ...form, educationHistory: updatedHistory });
+                  }}
+                >
+                  <option value="">Select Degree</option>
+                  {degreeOptions.map(degree => (
+                    <option key={degree} value={degree}>{degree}</option>
+                  ))}
+                </select>
+                {/* Institution Text Input */}
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  placeholder="Institution"
+                  value={form.educationHistory[0]?.institution || ""}
+                  onChange={e => {
+                    const updatedHistory = [...form.educationHistory];
+                    if (!updatedHistory[0]) updatedHistory[0] = {};
+                    updatedHistory[0].institution = e.target.value;
+                    setForm({ ...form, educationHistory: updatedHistory });
+                  }}
+                />
+                {/* Passing Year Text Input */}
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  placeholder="Passing Year"
+                  value={form.educationHistory[0]?.passingYear || ""}
+                  onChange={e => {
+                    const updatedHistory = [...form.educationHistory];
+                    if (!updatedHistory[0]) updatedHistory[0] = {};
+                    updatedHistory[0].passingYear = e.target.value;
+                    setForm({ ...form, educationHistory: updatedHistory });
+                  }}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

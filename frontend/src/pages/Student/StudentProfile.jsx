@@ -119,7 +119,10 @@ export default function StudentProfile() {
         skills: form.skills.split(",").map((s) => s.trim()).filter(Boolean),
         interests: form.interests.split(",").map((s) => s.trim()).filter(Boolean),
         industryInterestOrField: form.industryInterestOrField.split(",").map((s) => s.trim()).filter(Boolean),
-        educationHistory: form.educationHistory,
+        educationHistory: (form.educationHistory || []).map(h => ({
+          ...h,
+          yearOfGraduation: h.yearOfGraduation ?? h.passingYear ?? "",
+        })),
       }
       await api.put("/students/me", payload)
       await fetchProfile()
@@ -357,16 +360,16 @@ export default function StudentProfile() {
                     setForm({ ...form, educationHistory: updatedHistory });
                   }}
                 />
-                {/* Passing Year Text Input */}
+                {/* Year of Graduation Text Input */}
                 <input
                   type="text"
                   className="w-full border rounded px-3 py-2"
-                  placeholder="Passing Year"
-                  value={form.educationHistory[0]?.passingYear || ""}
+                  placeholder="Year of Graduation"
+                  value={form.educationHistory[0]?.yearOfGraduation || ""}
                   onChange={e => {
                     const updatedHistory = [...form.educationHistory];
                     if (!updatedHistory[0]) updatedHistory[0] = {};
-                    updatedHistory[0].passingYear = e.target.value;
+                    updatedHistory[0].yearOfGraduation = e.target.value;
                     setForm({ ...form, educationHistory: updatedHistory });
                   }}
                 />

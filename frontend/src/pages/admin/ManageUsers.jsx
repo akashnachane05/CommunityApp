@@ -49,15 +49,7 @@ const ManageUsers = () => {
     }
   };
 
-   const viewUserActivity = async (user) => {
-        try {
-            const res = await api.get(`/admins/activity/${user._id}`);
-            setActivities(res.data);
-            setSelectedUser(user);
-        } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: "Failed to load user activity." });
-        }
-    };
+   
 
   return (
     <>
@@ -111,10 +103,7 @@ const ManageUsers = () => {
                       </Dialog>
                     </td>
                    <td className="p-3 flex items-center space-x-2">
-                                                {/* ✅ NEW: "View Activity" Button */}
-                                                <Button onClick={() => viewUserActivity(u)} variant="outline" size="sm" className="h-8 w-8 p-0" title="View User Activity">
-                                                    <FileText className="h-4 w-4" />
-                                                </Button>
+                                                
                                                 <Button onClick={() => deleteUser(u._id)} variant="destructive" size="sm" className="h-8 w-8 p-0" title="Delete User">
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -128,29 +117,7 @@ const ManageUsers = () => {
       </CardContent>
     </Card>
    {/* ✅ NEW: Dialog to display the user's activity feed */}
-            <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Activity Feed for {selectedUser?.fullName}</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4 max-h-[60vh] overflow-y-auto">
-                        {activities.length > 0 ? (
-                            <ul className="space-y-4">
-                                {activities.map(activity => (
-                                    <li key={activity._id} className="flex items-start space-x-3">
-                                        <div className="bg-gray-100 rounded-full p-2 mt-1"><Calendar className="h-4 w-4 text-gray-500" /></div>
-                                        <div>
-                                            <p className="font-medium text-sm">{activity.activityType.replace(/_/g, ' ')}</p>
-                                            {activity.details.eventTitle && <p className="text-sm text-gray-600">Event: {activity.details.eventTitle}</p>}
-                                            <p className="text-xs text-gray-400">{new Date(activity.createdAt).toLocaleString()}</p>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : <p className="text-sm text-gray-500">No activity has been recorded for this user.</p>}
-                    </div>
-                </DialogContent>
-            </Dialog>
+           
         </>
     );
 };

@@ -6,6 +6,7 @@ const cors = require('cors');
 require('dotenv').config();
 const http = require('http'); // Import http
 const { Server } = require("socket.io"); // Import Server from socket.io
+const { autoLogWrites } = require('./utils/activityLogger');
 
 // --- Import all your route files ---
 const userRoutes = require('./routes/userRoutes');
@@ -36,6 +37,7 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(autoLogWrites()); // logs POST/PUT/PATCH/DELETE globally
 
 // --- Connect All API Routes to the App ---
 app.use('/api/users', userRoutes);

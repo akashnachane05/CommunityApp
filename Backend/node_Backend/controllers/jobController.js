@@ -60,6 +60,12 @@ exports.createJob = async (req, res) => {
             console.error("❌ Error sending job emails:", err);
         }
     });
+    res.locals.activityAction = 'JOB_CREATE';
+    res.locals.activityUserId = User._id;     // ensure the log ties to this user
+    res.locals.activityRole = User.role;          // Student/Alumni/Admin
+    res.locals.activityTargetType = 'User';
+    res.locals.activityTargetId = User._id;
+    res.locals.activityMeta = { email: User.email };
 
   } catch (err) {
     console.error('Error creating job:', err);
@@ -80,6 +86,12 @@ exports.deleteJob = async (req, res) => {
         }
         await job.deleteOne();
         res.json({ message: 'Job removed successfully' });
+    res.locals.activityAction = 'JOB_DELETE';
+    res.locals.activityUserId = User._id;     // ensure the log ties to this user
+    res.locals.activityRole = User.role;          // Student/Alumni/Admin
+    res.locals.activityTargetType = 'User';
+    res.locals.activityTargetId = User._id;
+    res.locals.activityMeta = { email: User.email };
     } catch (err) {
         res.status(500).json({ message: 'Server Error' });
     }

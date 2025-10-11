@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Calendar, MessageSquare, Briefcase, LogOut, ArrowRight, X } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, MessageSquare, Briefcase, LogOut, ArrowRight, X,History } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
 
@@ -10,6 +10,7 @@ const AdminSidebar = ({ isCollapsed, onToggle, activeTab, setActiveTab, logout }
     { name: 'Manage Events', icon: Calendar, tab: 'events' },
     { name: 'Manage Forum', icon: MessageSquare, tab: 'forum' },
     { name: 'Manage Jobs', icon: Briefcase, tab: 'jobs' },
+    { name: 'Activity Logs', icon: History, tab: 'activity' },
   ];
 
   return (

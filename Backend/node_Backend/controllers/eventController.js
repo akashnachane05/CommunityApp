@@ -1,7 +1,7 @@
 const Event = require('../models/Event');
 const User = require('../models/User');
 const Student = require('../models/Students');
-const { recordActivity } = require('../utils/activityLogger');
+
 const { sendEventApprovalEmail, sendEventRejectionEmail,sendEventApprovalAlumniEmail,sendEventRegistrationEmail } = require('../utils/eventMailer');
 // FOR STUDENTS: Get all APPROVED events
 exports.getAllEvents = async (req, res) => {
@@ -26,6 +26,12 @@ exports.createEvent = async (req, res) => {
     const event = new Event(newEventData);
     await event.save();
     res.status(201).json(event);
+      res.locals.activityAction = 'EVENT_CREATE';
+        res.locals.activityUserId = User._id;     // ensure the log ties to this user
+        res.locals.activityRole = User.role;          // Student/Alumni/Admin
+        res.locals.activityTargetType = 'User';
+        res.locals.activityTargetId = User._id;
+        res.locals.activityMeta = { email: User.email };
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -58,13 +64,7 @@ exports.registerForEvent = async (req, res) => {
       { new: true }
     );
 
-    if (typeof recordActivity === "function") {
-      await recordActivity(req.user.id, "EVENT_REGISTERED", {
-        eventId: updatedEvent._id,
-        eventTitle: updatedEvent.title,
-      });
-    }
-
+   
      // Send registration confirmation email asynchronously
     process.nextTick(async () => {
       try {

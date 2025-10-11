@@ -106,6 +106,12 @@ exports.loginUser = async (req, res) => {
     }
     const token = generateToken(user);
     res.json({ token, user });
+    res.locals.activityAction = 'USER_LOGIN';
+    res.locals.activityUserId = user._id;         // ensure the log ties to this user
+    res.locals.activityRole = user.role;          // Student/Alumni/Admin
+    res.locals.activityTargetType = 'User';
+    res.locals.activityTargetId = user._id;
+    res.locals.activityMeta = { email: user.email };
   } catch (err) {
     console.error('Error logging in:', err);
     res.status(500).json({ message: 'Server error', error: err.message });

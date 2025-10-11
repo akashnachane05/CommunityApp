@@ -11,6 +11,7 @@ import ManageEvents from "./ManageEvents";
 import ManageUsers from "./ManageUsers";
 import ManageForum from "./ManageForum";
 import ManageJobs from "./ManageJobs";
+import AdminActivity from "./AdminActivity";
 // --- Dashboard View Component ---
 const DashboardView = () => {
     const [stats, setStats] = useState({});
@@ -70,6 +71,7 @@ export default function AdminDashboard() {
       case "events": return <ManageEvents />;
       case "forum": return <ManageForum />;
       case "jobs": return <ManageJobs />;
+      case "activity": return <AdminActivity />;
       default: return <DashboardView />;
     }
   };

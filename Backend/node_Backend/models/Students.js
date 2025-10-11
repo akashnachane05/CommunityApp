@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const studentSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   branch: { type: String},
-  grNo: { type: String, unique: true , sparse: true, default: null},
+  grNo: { type: String, default: null},
   educationHistory: [{
     degree: String,
     institution: String,

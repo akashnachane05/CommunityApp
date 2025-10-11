@@ -1,10 +1,14 @@
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { User, Key, IdCard, LogOut } from "lucide-react"
+import api from '../../api/axios';
+
+import ChangePasswordDialog from '../../components/ChangePasswordDialog';
 
 export default function ProfileMenu({ user, setActiveTab, logout }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef(null)
+  const [pwdOpen, setPwdOpen] = useState(false);
 
   // Close on outside click
   useEffect(() => {
@@ -78,7 +82,7 @@ export default function ProfileMenu({ user, setActiveTab, logout }) {
               User Profile
             </button>
             <button
-              onClick={() => alert("Change password clicked")}
+              onClick={() => setPwdOpen(true)}
               className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
             >
               <Key className="h-4 w-4 mr-2 text-green-600" />
@@ -94,6 +98,9 @@ export default function ProfileMenu({ user, setActiveTab, logout }) {
           </div>
         </div>
       )}
+
+      {/* Change Password Modal */}
+      <ChangePasswordDialog open={pwdOpen} onClose={() => setPwdOpen(false)} />
     </div>
   )
 }

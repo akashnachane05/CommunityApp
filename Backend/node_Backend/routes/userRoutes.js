@@ -14,6 +14,7 @@ router.post('/verify-code', userController.verifyCode); // MOVED HERE
 // Protected Routes (for any logged-in user)
 // =======================
 router.get('/me', auth(), userController.getProfile);
+router.put('/change-password', auth(['Student', 'Alumni', 'Admin']), userController.changePassword);
 
 // =======================
 // Protected Routes (Admins only)
